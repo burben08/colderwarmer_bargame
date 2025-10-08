@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zurich Bar Hunt</title>
+    <title>Bar Hunt Game</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -11,26 +11,171 @@
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; display: flex; flex-direction: column; background: #f5f5f5; }
         .hidden { display: none !important; }
 
-        /* --- Setup Screen --- */
-        #setupScreen {
+        /* --- Initial Setup Screen --- */
+        #initialSetupScreen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .initial-setup-card {
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+        .initial-setup-card h1 { 
+            font-size: 32px; 
+            text-align: center; 
+            margin-bottom: 40px; 
+            color: #333;
+        }
+        .setup-group { 
+            display: flex; 
+            flex-direction: column; 
+            margin-bottom: 25px;
+        }
+        .setup-group label { 
+            margin-bottom: 10px; 
+            font-weight: 600; 
+            color: #555; 
+            font-size: 16px;
+        }
+        .setup-group input { 
+            padding: 15px; 
+            border: 2px solid #ddd; 
+            border-radius: 10px; 
+            font-size: 16px; 
+            outline: none;
+            transition: border 0.2s;
+        }
+        .setup-group input:focus {
+            border-color: #667eea;
+        }
+        .size-options {
             display: grid;
-            grid-template-columns: 450px 1fr;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .size-btn {
+            padding: 15px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #666;
+        }
+        .size-btn:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        .size-btn.selected {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        #continueBtn {
+            width: 100%;
+            padding: 18px;
+            margin-top: 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        #continueBtn:hover { 
+            background: #5a6edc; 
+            transform: translateY(-2px);
+        }
+        #continueBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        #initialSetupError { 
+            color: #e53e3e; 
+            text-align: center; 
+            margin-top: 15px; 
+            min-height: 20px; 
+            font-size: 14px;
+        }
+
+        /* --- Boundary Adjustment Screen --- */
+        #boundarySetupScreen {
+            display: grid;
+            grid-template-columns: 350px 1fr;
             height: 100%;
             background: #f0f2f5;
         }
-        .setup-controls {
+        .boundary-controls {
             background: white;
-            padding: 40px;
+            padding: 30px;
             box-shadow: 5px 0 15px rgba(0,0,0,0.1);
             z-index: 10;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
         }
-        .setup-controls h1 { font-size: 28px; text-align: center; margin-bottom: 30px; color: #333; }
-        .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .setup-group { display: flex; flex-direction: column; }
-        .setup-group label { margin-bottom: 8px; font-weight: 500; color: #555; }
-        .setup-group input { padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; outline-color: #667eea; }
+        .boundary-controls h2 { 
+            font-size: 24px; 
+            margin-bottom: 10px; 
+            color: #333; 
+        }
+        .boundary-controls p {
+            color: #666;
+            margin-bottom: 25px;
+            font-size: 14px;
+        }
+        .boundary-adjust {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        .boundary-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .boundary-row label {
+            flex: 1;
+            font-weight: 500;
+            color: #555;
+        }
+        .adjust-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .adjust-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        .boundary-value {
+            min-width: 80px;
+            text-align: center;
+            font-family: monospace;
+            font-size: 14px;
+            color: #333;
+        }
         #startGameBtn {
             width: 100%;
             padding: 15px;
@@ -45,9 +190,36 @@
             transition: background 0.2s;
         }
         #startGameBtn:hover { background: #5a6edc; }
-        #setupError { color: #e53e3e; text-align: center; margin-top: 15px; min-height: 20px; }
-        #setupMap { height: 100%; width: 100%; background: #e9e9e9; }
-
+        #startGameBtn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        #boundaryError { 
+            color: #e53e3e; 
+            text-align: center; 
+            margin-top: 15px; 
+            min-height: 20px; 
+            font-size: 14px;
+        }
+        #boundaryMap { 
+            height: 100%; 
+            width: 100%; 
+            background: #e9e9e9; 
+        }
+        #backBtn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            background: #e0e0e0;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        #backBtn:hover { background: #d0d0d0; }
 
         /* --- Game Screen --- */
         #gameScreen { height: 100%; display: flex; flex-direction: column; }
@@ -84,36 +256,31 @@
 
         /* --- Mobile Responsiveness --- */
         @media (max-width: 768px) {
-            #setupScreen {
+            .initial-setup-card {
+                padding: 30px 20px;
+            }
+            .size-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            #boundarySetupScreen {
                 display: flex;
                 flex-direction: column;
                 height: 100vh;
-                grid-template-columns: 1fr;
             }
-            .setup-controls {
+            .boundary-controls {
                 flex-shrink: 0;
                 overflow-y: auto;
                 padding: 20px;
                 box-shadow: 0 5px 15px rgba(0,0,0,0.1);
             }
-            #setupMap {
+            #boundaryMap {
                 flex-grow: 1;
-                min-height: 250px;
-            }
-            .setup-grid {
-                grid-template-columns: 1fr;
-            }
-            .setup-controls h1 {
-                font-size: 24px;
-                margin-bottom: 20px;
-            }
-            #startGameBtn {
-                margin-top: 20px;
+                min-height: 300px;
             }
             .header {
                 padding: 15px;
             }
-             .header h1 {
+            .header h1 {
                 font-size: 20px;
             }
             .game-info {
@@ -144,35 +311,62 @@
 </head>
 <body>
 
-    <div id="setupScreen">
-        <div class="setup-controls">
+    <div id="initialSetupScreen">
+        <div class="initial-setup-card">
             <h1>🍺 New Bar Hunt</h1>
             <div class="setup-group">
                 <label for="startLocationInput">Starting Location</label>
-                <input type="text" id="startLocationInput" value="Paradeplatz">
+                <input type="text" id="startLocationInput" value="Paradeplatz, Zurich" placeholder="Enter a location...">
             </div>
-            <div class="setup-grid" style="margin-top: 20px;">
-                <div class="setup-group">
-                    <label for="northBoundInput">North Boundary (Lat)</label>
-                    <input type="number" step="0.001" id="northBoundInput" value="47.39">
-                </div>
-                <div class="setup-group">
-                    <label for="southBoundInput">South Boundary (Lat)</label>
-                    <input type="number" step="0.001" id="southBoundInput" value="47.365">
-                </div>
-                <div class="setup-group">
-                    <label for="eastBoundInput">East Boundary (Lng)</label>
-                    <input type="number" step="0.001" id="eastBoundInput" value="8.56">
-                </div>
-                <div class="setup-group">
-                    <label for="westBoundInput">West Boundary (Lng)</label>
-                    <input type="number" step="0.001" id="westBoundInput" value="8.52">
+            <div class="setup-group">
+                <label>Game Boundary Size</label>
+                <div class="size-options">
+                    <button class="size-btn" data-size="S">S</button>
+                    <button class="size-btn selected" data-size="M">M</button>
+                    <button class="size-btn" data-size="L">L</button>
+                    <button class="size-btn" data-size="XL">XL</button>
                 </div>
             </div>
-            <div id="setupError"></div>
+            <div id="initialSetupError"></div>
+            <button id="continueBtn">Continue to Map</button>
+        </div>
+    </div>
+
+    <div id="boundarySetupScreen" class="hidden">
+        <div class="boundary-controls">
+            <button id="backBtn">← Back</button>
+            <h2>Adjust Game Area</h2>
+            <p>Fine-tune the boundaries of the game area.</p>
+            <div class="boundary-adjust">
+                <div class="boundary-row">
+                    <label>North</label>
+                    <button class="adjust-btn" data-direction="north" data-amount="-0.001">−</button>
+                    <span class="boundary-value" id="northValue">47.390</span>
+                    <button class="adjust-btn" data-direction="north" data-amount="0.001">+</button>
+                </div>
+                <div class="boundary-row">
+                    <label>South</label>
+                    <button class="adjust-btn" data-direction="south" data-amount="0.001">−</button>
+                    <span class="boundary-value" id="southValue">47.365</span>
+                    <button class="adjust-btn" data-direction="south" data-amount="-0.001">+</button>
+                </div>
+                <div class="boundary-row">
+                    <label>East</label>
+                    <button class="adjust-btn" data-direction="east" data-amount="-0.001">−</button>
+                    <span class="boundary-value" id="eastValue">8.560</span>
+                    <button class="adjust-btn" data-direction="east" data-amount="0.001">+</button>
+                </div>
+                <div class="boundary-row">
+                    <label>West</label>
+                    <button class="adjust-btn" data-direction="west" data-amount="0.001">−</button>
+                    <span class="boundary-value" id="westValue">8.520</span>
+                    <button class="adjust-btn" data-direction="west" data-amount="-0.001">+</button>
+                </div>
+            </div>
+            <div id="boundaryError"></div>
             <button id="startGameBtn">Start Game</button>
         </div>
-        <div id="setupMap"></div>
+        <div id="boundaryMap"></div>
     </div>
 
     <div id="gameScreen" class="hidden">
@@ -180,7 +374,7 @@
             <button id="resetBtn" title="New Game">
                 <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9,14.21,4,12,4A8,8,0,0,0,4,12A8,8,0,0,0,12,20C15.73,20,18.84,17.45,19.73,14H17.65C16.83,16.33,14.61,18,12,18A6,6,0,0,1,6,12A6,6,0,0,1,12,6C13.55,6,14.93,6.6,15.96,7.65L13,10.61H20V3.61L17.65,6.35Z"></path></svg>
             </button>
-            <h1>🍺 Zurich Bar Hunt Game</h1>
+            <h1>🍺 Bar Hunt Game</h1>
             <div class="game-info">
                 <span>🎯 Target: <strong id="targetBar">???</strong></span>
                 <span>🏃 Visits: <strong id="visitCount">0</strong></span>
@@ -200,21 +394,30 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script>
         // --- DOM ELEMENTS ---
-        const setupScreen = document.getElementById('setupScreen');
+        const initialSetupScreen = document.getElementById('initialSetupScreen');
+        const boundarySetupScreen = document.getElementById('boundarySetupScreen');
         const gameScreen = document.getElementById('gameScreen');
+        const continueBtn = document.getElementById('continueBtn');
         const startGameBtn = document.getElementById('startGameBtn');
+        const backBtn = document.getElementById('backBtn');
         const barInput = document.getElementById('barInput');
         const previewBtn = document.getElementById('previewBtn');
         const confirmBtn = document.getElementById('confirmBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const resetBtn = document.getElementById('resetBtn');
-        const boundaryInputs = [
-            document.getElementById('northBoundInput'), document.getElementById('southBoundInput'),
-            document.getElementById('eastBoundInput'), document.getElementById('westBoundInput')
-        ];
+
+        // --- SIZE PRESETS ---
+        const SIZE_PRESETS = {
+            'S': 1,
+            'M': 2,
+            'L': 10,
+            'XL': 100
+        };
+        let selectedSize = 'M';
 
         // --- GAME STATE & VARS ---
         let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
+        let centerLocation = { lat: 47.3769, lng: 8.5417 };
         let gameState = {
             targetBar: null, targetLocation: null, visitedBars: [],
             visitCount: 0, gameWon: false,
@@ -222,8 +425,8 @@
         };
         let previewedLocation = null;
         let map = null;
-        let setupMap = null;
-        let setupBoundsRectangle = null;
+        let boundaryMap = null;
+        let boundaryRectangle = null;
         let gameArea = null;
         let markers = [];
         let pathLine = null;
@@ -246,10 +449,10 @@
             const midPoint = { x: (p1_xy.x + p2_xy.x) / 2, y: (p1_xy.y + p2_xy.y) / 2 };
             const a = dx; const b = dy; const c = -dx * midPoint.x - dy * midPoint.y;
             const intersections = [];
-            if (Math.abs(b) > 1e-9) { const x = (-c - b * (rect.y + rect.height)) / a; if (x >= rect.x && x <= rect.x + rect.width) intersections.push({ y: rect.y + rect.height, x: x }); }
-            if (Math.abs(b) > 1e-9) { const x = (-c - b * rect.y) / a; if (x >= rect.x && x <= rect.x + rect.width) intersections.push({ y: rect.y, x: x }); }
-            if (Math.abs(a) > 1e-9) { const y = (-c - a * rect.x) / b; if (y >= rect.y && y <= rect.y + rect.height) intersections.push({ y: y, x: rect.x }); }
-            if (Math.abs(a) > 1e-9) { const y = (-c - a * (rect.x + rect.width)) / b; if (y >= rect.y && y <= rect.y + rect.height) intersections.push({ y: y, x: rect.x + rect.width }); }
+            if (Math.abs(a) > 1e-9) { const x_top = (-c - b * (rect.y + rect.height)) / a; if (x_top >= rect.x && x_top <= rect.x + rect.width) intersections.push({ y: rect.y + rect.height, x: x_top }); }
+            if (Math.abs(a) > 1e-9) { const x_bottom = (-c - b * rect.y) / a; if (x_bottom >= rect.x && x_bottom <= rect.x + rect.width) intersections.push({ y: rect.y, x: x_bottom }); }
+            if (Math.abs(b) > 1e-9) { const y_left = (-c - a * rect.x) / b; if (y_left >= rect.y && y_left <= rect.y + rect.height) intersections.push({ y: y_left, x: rect.x }); }
+            if (Math.abs(b) > 1e-9) { const y_right = (-c - a * (rect.x + rect.width)) / b; if (y_right >= rect.y && y_right <= rect.y + rect.height) intersections.push({ y: y_right, x: rect.x + rect.width }); }
             const uniquePoints = []; const seen = new Set();
             for (const p of intersections) { const key = `${p.x.toFixed(7)},${p.y.toFixed(7)}`; if (!seen.has(key)) { uniquePoints.push(p); seen.add(key); } }
             return uniquePoints.length >= 2 ? [ [uniquePoints[0].y, uniquePoints[0].x], [uniquePoints[1].y, uniquePoints[1].x] ] : [];
@@ -326,8 +529,8 @@
                     lng: el.lon
                 }));
             
-            if (bars.length === 0) {
-                throw new Error('No bars found in the specified area. Try a larger area or different location.');
+            if (bars.length < 2) {
+                throw new Error('Fewer than 2 bars found in the area. Please select a larger or different location.');
             }
             
             return bars;
@@ -337,12 +540,12 @@
         function updatePath() { if (pathLine) map.removeLayer(pathLine); if (gameState.visitedBars.length > 0) { const points = [ [gameState.startingPoint.lat, gameState.startingPoint.lng], ...gameState.visitedBars.map(bar => [bar.lat, bar.lng]) ]; pathLine = L.polyline(points, { color: '#667eea', weight: 3, opacity: 0.7, dashArray: '10, 10' }).addTo(map); } }
 
         async function initGame() {
-            if (map) map.remove();
-            map = L.map('map').setView([47.3769, 8.5417], 14);
+            if (map) { map.remove(); map = null; }
+            map = L.map('map').setView([centerLocation.lat, centerLocation.lng], 14);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap contributors', maxZoom: 19 }).addTo(map);
             
             markers.forEach(marker => marker.remove()); markers = [];
-            if (pathLine) pathLine.remove();
+            if (pathLine) pathLine.remove(); pathLine = null;
             eliminationZones.forEach(zone => zone.remove()); eliminationZones = [];
             clearPreview();
 
@@ -352,6 +555,7 @@
                 bars = await fetchBarsInBounds();
             } catch (error) {
                 showMessage(error.message, 'error');
+                setTimeout(resetGame, 3000); 
                 return;
             }
 
@@ -375,10 +579,11 @@
             showMessage(`Game started! ${bars.length} bars found in area. Find the hidden bar.`, 'success');
             map.fitBounds(gameArea.getBounds(), { padding: [10, 10] });
         }
-
+        
         async function tryBar() {
             if (gameState.gameWon || !previewedLocation) return;
-            const query = barInput.value.trim();
+            
+            const foundBarName = await findClosestBarName(previewedLocation);
             const location = previewedLocation;
             clearPreview();
             
@@ -388,19 +593,19 @@
             const isWarmer = currentDist < prevDist;
             
             gameState.visitCount++;
-            gameState.visitedBars.push({ name: query, ...location });
+            gameState.visitedBars.push({ name: foundBarName, ...location });
 
-            const isWin = query.toLowerCase().includes(gameState.targetBar.toLowerCase());
+            const isWin = foundBarName.toLowerCase() === gameState.targetBar.toLowerCase();
             const icon = isWin ? winIcon : visitedIcon(gameState.visitCount, isWarmer);
             
             const marker = L.marker([location.lat, location.lng], { icon }).addTo(map)
-                .bindPopup(`<div class="bar-popup"><h3>${isWin ? '🎉 ' : (isWarmer ? '🔥 ' : '❄️ ')}${query}</h3><p><span class="visit-number">${gameState.visitCount}</span> Visit #${gameState.visitCount}</p>${!isWin ? `<p style="font-weight: 600; color: ${isWarmer ? '#FF6347' : '#4169E1'}">${isWarmer ? '🔥 Warmer!' : '❄️ Colder!'}</p>` : ''}${isWin ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>' : ''}</div>`)
+                .bindPopup(`<div class="bar-popup"><h3>${isWin ? '🎉 ' : (isWarmer ? '🔥 ' : '❄️ ')}${foundBarName}</h3><p><span class="visit-number">${gameState.visitCount}</span> Visit #${gameState.visitCount}</p>${!isWin ? `<p style="font-weight: 600; color: ${isWarmer ? '#FF6347' : '#4169E1'}">${isWarmer ? '🔥 Warmer!' : '❄️ Colder!'}</p>` : ''}${isWin ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>' : ''}</div>`)
                 .openPopup();
             markers.push(marker);
             
             createEliminationZone(prevLocation, location, isWarmer);
             updatePath();
-            map.flyTo([location.lat, location.lng], map.getZoom() + 1, { duration: 1 });
+            map.flyTo([location.lat, location.lng], Math.max(map.getZoom(), 16), { duration: 1 });
             document.getElementById('visitCount').textContent = gameState.visitCount;
 
             if (isWin) {
@@ -409,6 +614,21 @@
                 showMessage(`🎉 Congratulations! You found ${gameState.targetBar} in ${gameState.visitCount} tries!`, 'win');
                 barInput.disabled = true; previewBtn.disabled = true;
             } else { showMessage(isWarmer ? '🔥 Getting warmer!' : '❄️ Getting colder!', isWarmer ? 'warmer' : 'colder'); }
+        }
+
+        async function findClosestBarName(location) {
+            const bars = await fetchBarsInBounds();
+            let closestBar = null;
+            let minDistance = Infinity;
+
+            for(const bar of bars) {
+                const dist = distance(location, bar);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    closestBar = bar;
+                }
+            }
+            return closestBar ? closestBar.name : barInput.value.trim();
         }
 
         function setButtonsToPreviewState(isPreviewing) {
@@ -422,6 +642,9 @@
             const query = barInput.value.trim();
             if (!query) { showMessage('Please enter a bar name to preview.', 'error'); return; }
             
+            previewBtn.disabled = true;
+            previewBtn.textContent = '...';
+
             try {
                 const location = await geocodeLocation(query);
                 if (location.lat < GAME_BOUNDS.south || location.lat > GAME_BOUNDS.north || location.lng < GAME_BOUNDS.west || location.lng > GAME_BOUNDS.east) {
@@ -437,9 +660,17 @@
                 if (linePoints.length >= 2) {
                     previewMarker = L.marker([location.lat, location.lng], { icon: previewIcon }).addTo(map);
                     previewLine = L.polyline(linePoints, { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 8' }).addTo(map);
+                    map.fitBounds(L.latLngBounds(linePoints).extend(L.latLng(location.lat, location.lng)), { padding: [50, 50], maxZoom: 16 });
                     setButtonsToPreviewState(true);
+                } else {
+                     showMessage(`Could not determine direction for '${query}'. Try another guess.`, 'error');
                 }
-            } catch (error) { showMessage(error.message, 'error'); }
+            } catch (error) { 
+                showMessage(error.message, 'error'); 
+            } finally {
+                previewBtn.disabled = false;
+                previewBtn.textContent = 'Preview';
+            }
         }
 
         function clearPreview() {
@@ -449,89 +680,180 @@
             previewMarker = null;
             previewedLocation = null;
             setButtonsToPreviewState(false);
+            barInput.value = '';
             if (!gameState.gameWon) barInput.disabled = false;
         }
+        
+        function resetGame() {
+            gameScreen.classList.add('hidden');
+            initialSetupScreen.classList.remove('hidden');
+            
+            if (map) { map.remove(); map = null; }
+            if (boundaryMap) { boundaryMap.remove(); boundaryMap = null; }
 
-        // --- SETUP SCREEN LOGIC ---
-        function initSetupScreen() {
-            setupMap = L.map('setupMap').setView([47.3769, 8.5417], 13);
+            document.getElementById('message').className = '';
+            document.getElementById('message').textContent = '';
+            barInput.value = '';
+            
+            selectedSize = 'M';
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+            document.querySelector('.size-btn[data-size="M"]').classList.add('selected');
+
+            setButtonsToPreviewState(false);
+            barInput.disabled = false;
+        }
+
+        // --- BOUNDARY SETUP LOGIC ---
+        function initBoundaryMap() {
+            if (boundaryMap) { boundaryMap.remove(); boundaryMap = null; }
+            boundaryMap = L.map('boundaryMap').setView([centerLocation.lat, centerLocation.lng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap contributors'
-            }).addTo(setupMap);
+            }).addTo(boundaryMap);
 
-            boundaryInputs.forEach(input => input.addEventListener('input', updateSetupBoundsPreview));
-            updateSetupBoundsPreview();
+            updateBoundaryRectangle();
         }
 
-        function updateSetupBoundsPreview() {
-            const n = parseFloat(document.getElementById('northBoundInput').value);
-            const s = parseFloat(document.getElementById('southBoundInput').value);
-            const e = parseFloat(document.getElementById('eastBoundInput').value);
-            const w = parseFloat(document.getElementById('westBoundInput').value);
+        function updateBoundaryRectangle() {
+            const bounds = [[GAME_BOUNDS.south, GAME_BOUNDS.west], [GAME_BOUNDS.north, GAME_BOUNDS.east]];
+            
+            if (boundaryRectangle) {
+                boundaryRectangle.remove();
+            }
+            boundaryRectangle = L.rectangle(bounds, { 
+                color: "#667eea", 
+                weight: 3,
+            }).addTo(boundaryMap);
+            
+            boundaryMap.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+            updateBoundaryValues();
+        }
 
-            if (isNaN(n) || isNaN(s) || isNaN(e) || isNaN(w) || n <= s || e <= w) {
-                if (setupBoundsRectangle) {
-                    setupBoundsRectangle.remove();
-                    setupBoundsRectangle = null;
-                }
+        function updateBoundaryValues() {
+            document.getElementById('northValue').textContent = GAME_BOUNDS.north.toFixed(4);
+            document.getElementById('southValue').textContent = GAME_BOUNDS.south.toFixed(4);
+            document.getElementById('eastValue').textContent = GAME_BOUNDS.east.toFixed(4);
+            document.getElementById('westValue').textContent = GAME_BOUNDS.west.toFixed(4);
+        }
+
+        function adjustBoundary(direction, amount) {
+            GAME_BOUNDS[direction] += amount;
+            
+            if (GAME_BOUNDS.north <= GAME_BOUNDS.south + 0.001) {
+                GAME_BOUNDS[direction] -= amount;
                 return;
             }
-
-            const bounds = [[s, w], [n, e]];
-            if (setupBoundsRectangle) {
-                setupBoundsRectangle.setBounds(bounds);
-            } else {
-                setupBoundsRectangle = L.rectangle(bounds, { color: "#667eea", weight: 3 }).addTo(setupMap);
+            if (GAME_BOUNDS.east <= GAME_BOUNDS.west + 0.001) {
+                GAME_BOUNDS[direction] -= amount;
+                return;
             }
-            setupMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 15 });
+            
+            updateBoundaryRectangle();
         }
 
+        function calculateBoundsFromCenter(center, size) {
+            offset = SIZE_PRESETS[size] / 2;
+            delta_lat = (offset / 6371) * (180 / Math.PI)
+            delta_lon = (offset / 6371) * (180 / Math.PI) / Math.cos(center.lat * Math.PI / 180)
+            return {
+                north: center.lat + delta_lat,
+                south: center.lat - delta_lat,
+                east: center.lng + delta_lon,
+                west: center.lng - delta_lon
+            }
+        }
 
         // --- EVENT LISTENERS ---
-        startGameBtn.addEventListener('click', async () => {
-            const setupError = document.getElementById('setupError');
-            setupError.textContent = '';
-            startGameBtn.disabled = true;
-            startGameBtn.textContent = 'Loading...';
+        document.querySelectorAll('.size-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+                selectedSize = btn.dataset.size;
+            });
+        });
+
+        continueBtn.addEventListener('click', async () => {
+            const initialSetupError = document.getElementById('initialSetupError');
+            initialSetupError.textContent = '';
+            continueBtn.disabled = true;
+            continueBtn.textContent = 'Loading...';
+            
             try {
-                const startLocName = document.getElementById('startLocationInput').value;
+                const startLocName = document.getElementById('startLocationInput').value.trim();
+                if (!startLocName) throw new Error('Please enter a starting location.');
+                
                 const startLocCoords = await geocodeLocation(startLocName);
                 gameState.startingPoint = { name: startLocName, ...startLocCoords };
+                centerLocation = startLocCoords;
+                
+                GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
+                
+                initialSetupScreen.classList.add('hidden');
+                boundarySetupScreen.classList.remove('hidden');
+                
+                // Delay map initialization slightly to ensure div is visible
+                setTimeout(initBoundaryMap, 10);
+                
+            } catch (error) {
+                initialSetupError.textContent = `Error: ${error.message}`;
+            } finally {
+                continueBtn.disabled = false;
+                continueBtn.textContent = 'Continue to Map';
+            }
+        });
 
-                GAME_BOUNDS.north = parseFloat(document.getElementById('northBoundInput').value);
-                GAME_BOUNDS.south = parseFloat(document.getElementById('southBoundInput').value);
-                GAME_BOUNDS.east = parseFloat(document.getElementById('eastBoundInput').value);
-                GAME_BOUNDS.west = parseFloat(document.getElementById('westBoundInput').value);
+        backBtn.addEventListener('click', () => {
+            boundarySetupScreen.classList.add('hidden');
+            initialSetupScreen.classList.remove('hidden');
+        });
 
+        document.querySelectorAll('.adjust-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const direction = btn.dataset.direction;
+                const amount = parseFloat(btn.dataset.amount);
+                adjustBoundary(direction, amount);
+            });
+        });
+
+        startGameBtn.addEventListener('click', async () => {
+            const boundaryError = document.getElementById('boundaryError');
+            boundaryError.textContent = '';
+            startGameBtn.disabled = true;
+            startGameBtn.textContent = 'Loading...';
+            
+            try {
                 if (GAME_BOUNDS.north <= GAME_BOUNDS.south || GAME_BOUNDS.east <= GAME_BOUNDS.west) {
                     throw new Error("Invalid boundaries.");
                 }
 
-                setupScreen.classList.add('hidden');
+                boundarySetupScreen.classList.add('hidden');
                 gameScreen.classList.remove('hidden');
-                await initGame();
+                
+                // Delay map initialization slightly to ensure div is visible
+                setTimeout(initGame, 10);
+
             } catch (error) {
-                setupError.textContent = `Error: ${error.message}. Please try another location or check boundaries.`;
-            } finally {
+                boundaryError.textContent = `Error: ${error.message}`;
                 startGameBtn.disabled = false;
                 startGameBtn.textContent = 'Start Game';
+            } finally {
+                // Re-enable button in case of success too, if needed later.
+                 setTimeout(() => {
+                    startGameBtn.disabled = false;
+                    startGameBtn.textContent = 'Start Game';
+                }, 1000);
             }
         });
 
         previewBtn.addEventListener('click', previewBar);
         confirmBtn.addEventListener('click', tryBar);
         cancelBtn.addEventListener('click', clearPreview);
-        resetBtn.addEventListener('click', () => {
-            gameScreen.classList.add('hidden');
-            setupScreen.classList.remove('hidden');
-            if(!setupMap.getContainer()) {
-                 initSetupScreen();
+        resetBtn.addEventListener('click', resetGame);
+        barInput.addEventListener('keypress', (e) => { 
+            if (e.key === 'Enter' && !previewBtn.classList.contains('hidden')) {
+                previewBtn.click();
             }
         });
-        barInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') previewBtn.click(); });
-        
-        // --- INITIALIZE ---
-        initSetupScreen();
 
     </script>
 </body>
