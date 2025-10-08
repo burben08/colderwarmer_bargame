@@ -13,15 +13,20 @@
 
         /* --- Setup Screen --- */
         #setupScreen {
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: grid;
+            grid-template-columns: 450px 1fr;
             height: 100%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px;
+            background: #f0f2f5;
         }
-        .setup-card { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
-        .setup-card h1 { font-size: 28px; text-align: center; margin-bottom: 30px; color: #333; }
+        .setup-controls {
+            background: white;
+            padding: 40px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.1);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+        }
+        .setup-controls h1 { font-size: 28px; text-align: center; margin-bottom: 30px; color: #333; }
         .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .setup-group { display: flex; flex-direction: column; }
         .setup-group label { margin-bottom: 8px; font-weight: 500; color: #555; }
@@ -29,7 +34,7 @@
         #startGameBtn {
             width: 100%;
             padding: 15px;
-            margin-top: 30px;
+            margin-top: auto;
             background: #667eea;
             color: white;
             border: none;
@@ -41,6 +46,8 @@
         }
         #startGameBtn:hover { background: #5a6edc; }
         #setupError { color: #e53e3e; text-align: center; margin-top: 15px; min-height: 20px; }
+        #setupMap { height: 100%; width: 100%; background: #e9e9e9; }
+
 
         /* --- Game Screen --- */
         #gameScreen { height: 100%; display: flex; flex-direction: column; }
@@ -74,12 +81,71 @@
         .bar-popup h3 { margin: 0 0 8px 0; color: #667eea; font-size: 16px; }
         .bar-popup p { margin: 4px 0; color: #666; }
         .visit-number { display: inline-block; background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-weight: 600; font-size: 12px; }
+
+        /* --- Mobile Responsiveness --- */
+        @media (max-width: 768px) {
+            #setupScreen {
+                display: flex;
+                flex-direction: column;
+                height: 100vh;
+                grid-template-columns: 1fr;
+            }
+            .setup-controls {
+                flex-shrink: 0;
+                overflow-y: auto;
+                padding: 20px;
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            }
+            #setupMap {
+                flex-grow: 1;
+                min-height: 250px;
+            }
+            .setup-grid {
+                grid-template-columns: 1fr;
+            }
+            .setup-controls h1 {
+                font-size: 24px;
+                margin-bottom: 20px;
+            }
+            #startGameBtn {
+                margin-top: 20px;
+            }
+            .header {
+                padding: 15px;
+            }
+             .header h1 {
+                font-size: 20px;
+            }
+            .game-info {
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 10px;
+            }
+            .search-container {
+                flex-wrap: wrap;
+            }
+            .search-input {
+                flex-basis: 100%;
+            }
+            .search-container .btn {
+                flex-grow: 1;
+                padding: 12px 10px;
+            }
+            #resetBtn {
+                top: 15px;
+                right: 15px;
+            }
+            #resetBtn svg {
+                width: 28px;
+                height: 28px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div id="setupScreen">
-        <div class="setup-card">
+        <div class="setup-controls">
             <h1>🍺 New Bar Hunt</h1>
             <div class="setup-group">
                 <label for="startLocationInput">Starting Location</label>
@@ -87,25 +153,26 @@
             </div>
             <div class="setup-grid" style="margin-top: 20px;">
                 <div class="setup-group">
-                    <label for="northBoundInput">North Boundary</label>
+                    <label for="northBoundInput">North Boundary (Lat)</label>
                     <input type="number" step="0.001" id="northBoundInput" value="47.39">
                 </div>
                 <div class="setup-group">
-                    <label for="southBoundInput">South Boundary</label>
+                    <label for="southBoundInput">South Boundary (Lat)</label>
                     <input type="number" step="0.001" id="southBoundInput" value="47.365">
                 </div>
                 <div class="setup-group">
-                    <label for="eastBoundInput">East Boundary</label>
+                    <label for="eastBoundInput">East Boundary (Lng)</label>
                     <input type="number" step="0.001" id="eastBoundInput" value="8.56">
                 </div>
                 <div class="setup-group">
-                    <label for="westBoundInput">West Boundary</label>
+                    <label for="westBoundInput">West Boundary (Lng)</label>
                     <input type="number" step="0.001" id="westBoundInput" value="8.52">
                 </div>
             </div>
             <div id="setupError"></div>
             <button id="startGameBtn">Start Game</button>
         </div>
+        <div id="setupMap"></div>
     </div>
 
     <div id="gameScreen" class="hidden">
@@ -116,8 +183,8 @@
             <h1>🍺 Zurich Bar Hunt Game</h1>
             <div class="game-info">
                 <span>🎯 Target: <strong id="targetBar">???</strong></span>
-                <span>📍 Visits: <strong id="visitCount">0</strong></span>
-                <span>📍 Starting Point: <strong id="startingBar">Paradeplatz</strong></span>
+                <span>🏃 Visits: <strong id="visitCount">0</strong></span>
+                <span>🏁 Starting Point: <strong id="startingBar">Paradeplatz</strong></span>
             </div>
             <div class="search-container">
                 <input type="text" id="barInput" class="search-input" placeholder="Enter a bar name..." autocomplete="off"/>
@@ -141,6 +208,10 @@
         const confirmBtn = document.getElementById('confirmBtn');
         const cancelBtn = document.getElementById('cancelBtn');
         const resetBtn = document.getElementById('resetBtn');
+        const boundaryInputs = [
+            document.getElementById('northBoundInput'), document.getElementById('southBoundInput'),
+            document.getElementById('eastBoundInput'), document.getElementById('westBoundInput')
+        ];
 
         // --- GAME STATE & VARS ---
         let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
@@ -150,19 +221,22 @@
             startingPoint: { name: 'Paradeplatz', lat: 47.3697, lng: 8.5392 }
         };
         let previewedLocation = null;
-        const zurichBars = ['Kronenhalle', 'Mars Bar', 'Gleis', 'Rio Bar'];
         let map = null;
+        let setupMap = null;
+        let setupBoundsRectangle = null;
         let gameArea = null;
         let markers = [];
         let pathLine = null;
         let eliminationZones = [];
         let previewLine = null;
+        let previewMarker = null;
 
         // --- ICONS ---
         const visitedIcon = (number, isWarmer) => L.divIcon({ html: `<div style="background: ${isWarmer ? '#FF6347' : '#4169E1'}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${number}</div>`, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
         const winIcon = L.divIcon({ html: '<div style="background: #4CAF50; color: white; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 3px solid white; box-shadow: 0 2px 12px rgba(0,0,0,0.4); animation: pulse 1s infinite;">🎉</div><style>@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); }}</style>', className: '', iconSize: [40, 40], iconAnchor: [20, 20], popupAnchor: [0, -20] });
         const startIcon = L.divIcon({ html: '<div style="background: #FFA500; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🏁</div>', className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
-        
+        const previewIcon = L.divIcon({ html: '<div style="background: #f97316; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">?</div>', className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
+
         // --- ALGORITHMS ---
         function getBisectorLinePoints(p1_xy, p2_xy) {
             const rect = { x: GAME_BOUNDS.west, y: GAME_BOUNDS.south, width: GAME_BOUNDS.east - GAME_BOUNDS.west, height: GAME_BOUNDS.north - GAME_BOUNDS.south };
@@ -212,12 +286,53 @@
 
         // --- GAME LOGIC ---
         function distance(p1, p2) { return Math.sqrt(Math.pow(p1.lat - p2.lat, 2) + Math.pow(p1.lng - p2.lng, 2)); }
+        
         async function geocodeLocation(query) {
-            const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lon=8.5417&lat=47.3769&limit=1`;
-            const response = await fetch(url); if (!response.ok) throw new Error('Network error');
-            const data = await response.json(); if (!data.features || data.features.length === 0) throw new Error(`'${query}' not found`);
-            const { coordinates } = data.features[0].geometry; return { lat: coordinates[1], lng: coordinates[0] };
+            const centerLat = (GAME_BOUNDS.north + GAME_BOUNDS.south) / 2;
+            const centerLng = (GAME_BOUNDS.east + GAME_BOUNDS.west) / 2;
+            const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lon=${centerLng}&lat=${centerLat}&limit=1`;
+            const response = await fetch(url); 
+            if (!response.ok) throw new Error('Network error');
+            const data = await response.json(); 
+            if (!data.features || data.features.length === 0) throw new Error(`'${query}' not found`);
+            const { coordinates } = data.features[0].geometry; 
+            return { lat: coordinates[1], lng: coordinates[0] };
         }
+
+        async function fetchBarsInBounds() {
+            const overpassUrl = 'https://overpass-api.de/api/interpreter';
+            const query = `
+                [out:json][timeout:25];
+                (
+                  node["amenity"="bar"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
+                  node["amenity"="pub"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
+                );
+                out body;
+            `;
+            
+            const response = await fetch(overpassUrl, {
+                method: 'POST',
+                body: query
+            });
+            
+            if (!response.ok) throw new Error('Failed to fetch bars from OpenStreetMap');
+            const data = await response.json();
+            
+            const bars = data.elements
+                .filter(el => el.tags && el.tags.name)
+                .map(el => ({
+                    name: el.tags.name,
+                    lat: el.lat,
+                    lng: el.lon
+                }));
+            
+            if (bars.length === 0) {
+                throw new Error('No bars found in the specified area. Try a larger area or different location.');
+            }
+            
+            return bars;
+        }
+
         function showMessage(text, type) { const msgDiv = document.getElementById('message'); msgDiv.textContent = text; msgDiv.className = `message ${type}`; if (type !== 'win') { setTimeout(() => { msgDiv.textContent = ''; msgDiv.className = ''; }, 3000); } }
         function updatePath() { if (pathLine) map.removeLayer(pathLine); if (gameState.visitedBars.length > 0) { const points = [ [gameState.startingPoint.lat, gameState.startingPoint.lng], ...gameState.visitedBars.map(bar => [bar.lat, bar.lng]) ]; pathLine = L.polyline(points, { color: '#667eea', weight: 3, opacity: 0.7, dashArray: '10, 10' }).addTo(map); } }
 
@@ -231,13 +346,22 @@
             eliminationZones.forEach(zone => zone.remove()); eliminationZones = [];
             clearPreview();
 
-            const targetBarName = zurichBars[Math.floor(Math.random() * zurichBars.length)];
-            const targetLoc = await geocodeLocation(targetBarName);
+            showMessage('Searching for bars in the area...', 'success');
+            let bars;
+            try {
+                bars = await fetchBarsInBounds();
+            } catch (error) {
+                showMessage(error.message, 'error');
+                return;
+            }
+
+            const targetBar = bars[Math.floor(Math.random() * bars.length)];
             
             gameArea = L.rectangle([[GAME_BOUNDS.south, GAME_BOUNDS.west], [GAME_BOUNDS.north, GAME_BOUNDS.east]], { color: '#667eea', weight: 2, fillOpacity: 0.1, dashArray: '5, 5' }).addTo(map);
             gameArea.bindPopup('Game Area - Find bars within this zone!');
 
-            gameState.targetBar = targetBarName; gameState.targetLocation = targetLoc;
+            gameState.targetBar = targetBar.name; 
+            gameState.targetLocation = { lat: targetBar.lat, lng: targetBar.lng };
             gameState.visitedBars = []; gameState.visitCount = 0; gameState.gameWon = false;
 
             const startMarker = L.marker([gameState.startingPoint.lat, gameState.startingPoint.lng], { icon: startIcon }).addTo(map);
@@ -248,7 +372,7 @@
             document.getElementById('visitCount').textContent = '0';
             document.getElementById('startingBar').textContent = gameState.startingPoint.name;
             barInput.disabled = false; previewBtn.disabled = false;
-            showMessage('New game started! Find the hidden bar.', 'success');
+            showMessage(`Game started! ${bars.length} bars found in area. Find the hidden bar.`, 'success');
             map.fitBounds(gameArea.getBounds(), { padding: [10, 10] });
         }
 
@@ -297,7 +421,6 @@
         async function previewBar() {
             const query = barInput.value.trim();
             if (!query) { showMessage('Please enter a bar name to preview.', 'error'); return; }
-            clearPreview();
             
             try {
                 const location = await geocodeLocation(query);
@@ -312,6 +435,7 @@
                 const linePoints = getBisectorLinePoints(prev_xy, current_xy);
 
                 if (linePoints.length >= 2) {
+                    previewMarker = L.marker([location.lat, location.lng], { icon: previewIcon }).addTo(map);
                     previewLine = L.polyline(linePoints, { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 8' }).addTo(map);
                     setButtonsToPreviewState(true);
                 }
@@ -320,12 +444,48 @@
 
         function clearPreview() {
             if (previewLine) map.removeLayer(previewLine);
+            if (previewMarker) map.removeLayer(previewMarker);
             previewLine = null;
+            previewMarker = null;
             previewedLocation = null;
             setButtonsToPreviewState(false);
-            barInput.value = '';
             if (!gameState.gameWon) barInput.disabled = false;
         }
+
+        // --- SETUP SCREEN LOGIC ---
+        function initSetupScreen() {
+            setupMap = L.map('setupMap').setView([47.3769, 8.5417], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(setupMap);
+
+            boundaryInputs.forEach(input => input.addEventListener('input', updateSetupBoundsPreview));
+            updateSetupBoundsPreview();
+        }
+
+        function updateSetupBoundsPreview() {
+            const n = parseFloat(document.getElementById('northBoundInput').value);
+            const s = parseFloat(document.getElementById('southBoundInput').value);
+            const e = parseFloat(document.getElementById('eastBoundInput').value);
+            const w = parseFloat(document.getElementById('westBoundInput').value);
+
+            if (isNaN(n) || isNaN(s) || isNaN(e) || isNaN(w) || n <= s || e <= w) {
+                if (setupBoundsRectangle) {
+                    setupBoundsRectangle.remove();
+                    setupBoundsRectangle = null;
+                }
+                return;
+            }
+
+            const bounds = [[s, w], [n, e]];
+            if (setupBoundsRectangle) {
+                setupBoundsRectangle.setBounds(bounds);
+            } else {
+                setupBoundsRectangle = L.rectangle(bounds, { color: "#667eea", weight: 3 }).addTo(setupMap);
+            }
+            setupMap.fitBounds(bounds, { padding: [20, 20], maxZoom: 15 });
+        }
+
 
         // --- EVENT LISTENERS ---
         startGameBtn.addEventListener('click', async () => {
@@ -343,11 +503,15 @@
                 GAME_BOUNDS.east = parseFloat(document.getElementById('eastBoundInput').value);
                 GAME_BOUNDS.west = parseFloat(document.getElementById('westBoundInput').value);
 
+                if (GAME_BOUNDS.north <= GAME_BOUNDS.south || GAME_BOUNDS.east <= GAME_BOUNDS.west) {
+                    throw new Error("Invalid boundaries.");
+                }
+
                 setupScreen.classList.add('hidden');
                 gameScreen.classList.remove('hidden');
                 await initGame();
             } catch (error) {
-                setupError.textContent = `Error: ${error.message}. Please try another location.`;
+                setupError.textContent = `Error: ${error.message}. Please try another location or check boundaries.`;
             } finally {
                 startGameBtn.disabled = false;
                 startGameBtn.textContent = 'Start Game';
@@ -360,9 +524,15 @@
         resetBtn.addEventListener('click', () => {
             gameScreen.classList.add('hidden');
             setupScreen.classList.remove('hidden');
+            if(!setupMap.getContainer()) {
+                 initSetupScreen();
+            }
         });
         barInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') previewBtn.click(); });
+        
+        // --- INITIALIZE ---
+        initSetupScreen();
+
     </script>
 </body>
 </html>
-
