@@ -423,6 +423,7 @@
             visitCount: 0, gameWon: false,
             startingPoint: { name: 'Paradeplatz', lat: 47.3697, lng: 8.5392 }
         };
+        let allBarsInArea = []; // FIX 1: To store bars and prevent re-fetching
         let previewedLocation = null;
         let map = null;
         let boundaryMap = null;
@@ -457,6 +458,7 @@
             for (const p of intersections) { const key = `${p.x.toFixed(7)},${p.y.toFixed(7)}`; if (!seen.has(key)) { uniquePoints.push(p); seen.add(key); } }
             return uniquePoints.length >= 2 ? [ [uniquePoints[0].y, uniquePoints[0].x], [uniquePoints[1].y, uniquePoints[1].x] ] : [];
         }
+        
         function getRectangleSlice(rect, pointA, pointB) {
             const dx = pointB.x - pointA.x; const dy = pointB.y - pointA.y;
             if (Math.abs(dx) < 1e-9 && Math.abs(dy) < 1e-9) { return [ { x: rect.x, y: rect.y }, { x: rect.x + rect.width, y: rect.y }, { x: rect.x + rect.width, y: rect.y + rect.height }, { x: rect.x, y: rect.y + rect.height }]; }
@@ -472,6 +474,7 @@
                 S = E;
             } return outputPolygon;
         }
+
         function getIntersection(p1, p2, line) {
             const { a, b, c } = line; const dx = p2.x - p1.x; const dy = p2.y - p1.y;
             const denominator = a * dx + b * dy; if (Math.abs(denominator) < 1e-9) return p1;
@@ -549,15 +552,16 @@
             eliminationZones.forEach(zone => zone.remove()); eliminationZones = [];
             clearPreview();
 
+            // FIX 1: Fetch bars once and store them
             showMessage('Searching for bars in the area...', 'success');
-            let bars;
             try {
-                bars = await fetchBarsInBounds();
+                allBarsInArea = await fetchBarsInBounds();
             } catch (error) {
                 showMessage(error.message, 'error');
                 setTimeout(resetGame, 3000); 
                 return;
             }
+            const bars = allBarsInArea; // Use the global list for setup
 
             const targetBar = bars[Math.floor(Math.random() * bars.length)];
             
@@ -616,8 +620,11 @@
             } else { showMessage(isWarmer ? '🔥 Getting warmer!' : '❄️ Getting colder!', isWarmer ? 'warmer' : 'colder'); }
         }
 
+        // FIX 1: Modified to use the global allBarsInArea list
         async function findClosestBarName(location) {
-            const bars = await fetchBarsInBounds();
+            const bars = allBarsInArea;
+            if (!bars || bars.length === 0) return barInput.value.trim();
+
             let closestBar = null;
             let minDistance = Infinity;
 
@@ -782,6 +789,7 @@
                 const startLocName = document.getElementById('startLocationInput').value.trim();
                 if (!startLocName) throw new Error('Please enter a starting location.');
                 
+                GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
                 const startLocCoords = await geocodeLocation(startLocName);
                 gameState.startingPoint = { name: startLocName, ...startLocCoords };
                 centerLocation = startLocCoords;
@@ -791,7 +799,6 @@
                 initialSetupScreen.classList.add('hidden');
                 boundarySetupScreen.classList.remove('hidden');
                 
-                // Delay map initialization slightly to ensure div is visible
                 setTimeout(initBoundaryMap, 10);
                 
             } catch (error) {
@@ -829,7 +836,6 @@
                 boundarySetupScreen.classList.add('hidden');
                 gameScreen.classList.remove('hidden');
                 
-                // Delay map initialization slightly to ensure div is visible
                 setTimeout(initGame, 10);
 
             } catch (error) {
@@ -837,7 +843,6 @@
                 startGameBtn.disabled = false;
                 startGameBtn.textContent = 'Start Game';
             } finally {
-                // Re-enable button in case of success too, if needed later.
                  setTimeout(() => {
                     startGameBtn.disabled = false;
                     startGameBtn.textContent = 'Start Game';
