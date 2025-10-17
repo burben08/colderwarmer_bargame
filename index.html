@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bar Hunt Game</title>
+    <title>Fritig Obe Möschterei</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -254,6 +254,26 @@
         .bar-popup p { margin: 4px 0; color: #666; }
         .visit-number { display: inline-block; background: #667eea; color: white; width: 24px; height: 24px; border-radius: 50%; text-align: center; line-height: 24px; font-weight: 600; font-size: 12px; }
 
+        #seedInfoBtn { 
+            position: absolute; 
+            top: 20px; 
+            right: 70px; 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            width: 36px; 
+            height: 36px; 
+            border-radius: 50%; 
+            border: 2px solid white; 
+            color: white; 
+            font-size: 20px; 
+            font-weight: bold; 
+            transition: all 0.2s; 
+        }
+        #seedInfoBtn:hover { 
+            background: rgba(255,255,255,0.2); 
+            transform: scale(1.1); 
+        }
         /* --- Mobile Responsiveness --- */
         @media (max-width: 768px) {
             .initial-setup-card {
@@ -300,6 +320,10 @@
             }
             #resetBtn {
                 top: 15px;
+                right: 60px;
+            }
+            #seedInfoBtn {
+                top: 15px;
                 right: 15px;
             }
             #resetBtn svg {
@@ -326,6 +350,10 @@
                     <button class="size-btn" data-size="L">L</button>
                     <button class="size-btn" data-size="XL">XL</button>
                 </div>
+            </div>
+            <div class="setup-group">
+                <label for="seedInput">Game Seed (optional)</label>
+                <input type="text" id="seedInput" placeholder="Leave empty for random seed">
             </div>
             <div id="initialSetupError"></div>
             <button id="continueBtn">Continue to Map</button>
@@ -372,8 +400,13 @@
     <div id="gameScreen" class="hidden">
         <div class="header">
             <button id="resetBtn" title="New Game">
-                <svg viewBox="0 0 24 24"><path d="M17.65,6.35C16.2,4.9,14.21,4,12,4A8,8,0,0,0,4,12A8,8,0,0,0,12,20C15.73,20,18.84,17.45,19.73,14H17.65C16.83,16.33,14.61,18,12,18A6,6,0,0,1,6,12A6,6,0,0,1,12,6C13.55,6,14.93,6.6,15.96,7.65L13,10.61H20V3.61L17.65,6.35Z"></path></svg>
+                <svg viewBox="0 0 24 24">
+                    <path
+                        d="M17.65,6.35C16.2,4.9,14.21,4,12,4A8,8,0,0,0,4,12A8,8,0,0,0,12,20C15.73,20,18.84,17.45,19.73,14H17.65C16.83,16.33,14.61,18,12,18A6,6,0,0,1,6,12A6,6,0,0,1,12,6C13.55,6,14.93,6.6,15.96,7.65L13,10.61H20V3.61L17.65,6.35Z">
+                    </path>
+                </svg>
             </button>
+            <button id="seedInfoBtn" title="Show Seed">?</button>
             <h1>🍺 Find the Secret Bar</h1>
             <div class="game-info">
                 <span>🎯 Target: <strong id="targetBar">???</strong></span>
@@ -392,6 +425,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/seedrandom@3.0.5/seedrandom.min.js"></script>
     <script>
         // --- DOM ELEMENTS ---
         const initialSetupScreen = document.getElementById('initialSetupScreen');
@@ -434,6 +468,7 @@
         let eliminationZones = [];
         let previewLine = null;
         let previewMarker = null;
+        let SEED = null;
 
         // --- ICONS ---
         const visitedIcon = (number, isWarmer) => L.divIcon({ html: `<div style="background: ${isWarmer ? '#FF6347' : '#4169E1'}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${number}</div>`, className: '', iconSize: [32, 32], iconAnchor: [16, 16], popupAnchor: [0, -16] });
@@ -563,7 +598,12 @@
             }
             const bars = allBarsInArea; // Use the global list for setup
 
-            const targetBar = bars[Math.floor(Math.random() * bars.length)];
+            if (!SEED) {
+                SEED = Math.random().toString(36).substring(2, 10);
+            }
+
+            const rng = new Math.seedrandom(SEED);
+            const targetBar = bars[Math.floor(rng() * bars.length)];
             
             gameArea = L.rectangle([[GAME_BOUNDS.south, GAME_BOUNDS.west], [GAME_BOUNDS.north, GAME_BOUNDS.east]], { color: '#667eea', weight: 2, fillOpacity: 0.1, dashArray: '5, 5' }).addTo(map);
             gameArea.bindPopup('Game Area - Find bars within this zone!');
@@ -587,6 +627,7 @@
         async function tryBar() {
             if (gameState.gameWon || !previewedLocation) return;
             
+            const userEnteredName = barInput.value.trim();
             const foundBarName = await findClosestBarName(previewedLocation);
             const location = previewedLocation;
             clearPreview();
@@ -597,13 +638,14 @@
             const isWarmer = currentDist < prevDist;
             
             gameState.visitCount++;
-            gameState.visitedBars.push({ name: foundBarName, ...location });
+            //gameState.visitedBars.push({ name: foundBarName, ...location });
+            gameState.visitedBars.push({ name: userEnteredName, ...location });
 
             const isWin = foundBarName.toLowerCase() === gameState.targetBar.toLowerCase();
             const icon = isWin ? winIcon : visitedIcon(gameState.visitCount, isWarmer);
-            
+       
             const marker = L.marker([location.lat, location.lng], { icon }).addTo(map)
-                .bindPopup(`<div class="bar-popup"><h3>${isWin ? '🎉 ' : (isWarmer ? '🔥 ' : '❄️ ')}${foundBarName}</h3><p><span class="visit-number">${gameState.visitCount}</span> Visit #${gameState.visitCount}</p>${!isWin ? `<p style="font-weight: 600; color: ${isWarmer ? '#FF6347' : '#4169E1'}">${isWarmer ? '🔥 Warmer!' : '❄️ Colder!'}</p>` : ''}${isWin ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>' : ''}</div>`)
+                .bindPopup(`<div class="bar-popup"><h3>${isWin ? '🎉 ' : (isWarmer ? '🔥 ' : '❄️ ')}${userEnteredName}</h3><p><span class="visit-number">${gameState.visitCount}</span> Visit #${gameState.visitCount}</p>${!isWin ? `<p style="font-weight: 600; color: ${isWarmer ? '#FF6347' : '#4169E1'}">${isWarmer ? '🔥 Warmer!' : '❄️ Colder!'}</p>` : ''}${isWin ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>' : ''}</div>`)
                 .openPopup();
             markers.push(marker);
             
@@ -708,6 +750,10 @@
 
             setButtonsToPreviewState(false);
             barInput.disabled = false;
+
+            // Reset seed
+            SEED = null;
+            document.getElementById('seedInput').value = '';
         }
 
         // --- BOUNDARY SETUP LOGIC ---
@@ -788,7 +834,10 @@
             try {
                 const startLocName = document.getElementById('startLocationInput').value.trim();
                 if (!startLocName) throw new Error('Please enter a starting location.');
-                
+                // Get seed from input or generate random one
+                const seedInput = document.getElementById('seedInput').value.trim();
+                SEED = seedInput || Math.random().toString(36).substring(2, 10);
+
                 GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
                 const startLocCoords = await geocodeLocation(startLocName);
                 gameState.startingPoint = { name: startLocName, ...startLocCoords };
@@ -819,6 +868,21 @@
                 const direction = btn.dataset.direction;
                 const amount = parseFloat(btn.dataset.amount);
                 adjustBoundary(direction, amount);
+            });
+        });
+
+        const seedInfoBtn = document.getElementById('seedInfoBtn');
+
+        seedInfoBtn.addEventListener('click', () => {
+            const msgDiv = document.getElementById('message');
+            msgDiv.innerHTML = `<strong>🎲 Game Seed:</strong> ${SEED}<br><small>Share this seed with friends to play the same game!</small>`;
+            msgDiv.className = 'message success';
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(SEED).then(() => {
+                msgDiv.innerHTML = `<strong>🎲 Game Seed:</strong> ${SEED} <span style="color: #4CAF50;">✓ Copied!</span><br><small>Share this seed with friends to play the same game!</small>`;
+            }).catch(() => {
+                // Clipboard failed, just show the seed
             });
         });
 
