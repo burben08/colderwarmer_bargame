@@ -13,39 +13,107 @@
   <body>
     <div id="initialSetupScreen">
       <div class="initial-setup-card">
-        <h1>BAR HUNT</h1>
-        <div class="setup-group">
-          <label for="startLocationInput">Starting Location</label>
-          <input
-            type="text"
-            id="startLocationInput"
-            value="Paradeplatz, Zurich"
-            placeholder="Enter a location..."
-          />
-        </div>
-        <div class="setup-group">
-          <label>Game Boundary Size</label>
-          <div class="size-options">
-            <button class="size-btn" data-size="S">S</button>
-            <button class="size-btn" data-size="M">M</button>
-            <button class="size-btn" data-size="L">L</button>
-            <button class="size-btn" data-size="XL">XL</button>
-            <button class="size-btn" data-size="XXL">XXL</button>
-            <button class="size-btn" data-size="XXXL">XXXL</button>
-            <button class="size-btn" data-size="Switzerland">
-              Switzerland
-            </button>
-            <button class="size-btn" data-size="Europe">Europe</button>
+        <h1>🍺 Find the Secret Bar</h1>
+
+        <!-- Section 1: Starting Location -->
+        <div class="setup-section active" data-section="location">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="section-icon">📍</span>
+              <span>Starting Location</span>
+            </div>
+            <span class="section-arrow">▼</span>
+          </div>
+          <div class="section-content">
+            <div class="section-inner">
+              <input
+                type="text"
+                id="startLocationInput"
+                class="setup-input"
+                value="Paradeplatz, Zurich"
+                placeholder="Enter a location..."
+              />
+            </div>
           </div>
         </div>
-        <div class="setup-group">
-          <label for="seedInput">Game Seed (optional)</label>
-          <input
-            type="text"
-            id="seedInput"
-            placeholder="Leave empty for random seed"
-          />
+
+        <!-- Section 2: Game Boundary -->
+        <div class="setup-section" data-section="boundary">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="section-icon">🗺️</span>
+              <span>Game Boundary</span>
+            </div>
+            <span class="section-arrow">▼</span>
+          </div>
+          <div class="section-content">
+            <div class="section-inner">
+              <div class="tab-nav">
+                <button class="tab-btn active" data-tab="custom">
+                  Custom Size
+                </button>
+                <button class="tab-btn" data-tab="region">Region</button>
+              </div>
+
+              <div class="tab-content active" data-tab-content="custom">
+                <div class="size-grid">
+                  <button class="size-btn" data-size="S">S</button>
+                  <button class="size-btn selected" data-size="M">M</button>
+                  <button class="size-btn" data-size="L">L</button>
+                  <button class="size-btn" data-size="XL">XL</button>
+                  <button class="size-btn" data-size="XXL">XXL</button>
+                  <button class="size-btn" data-size="XXXL">XXXL</button>
+                </div>
+              </div>
+
+              <div class="tab-content" data-tab-content="region">
+                <div class="region-grid">
+                  <button class="region-btn" data-size="Switzerland">
+                    🇨🇭 Switzerland
+                  </button>
+                  <button class="region-btn" data-size="Germany">
+                    🇩🇪 Germany
+                  </button>
+                  <button class="region-btn" data-size="France">
+                    🇫🇷 France
+                  </button>
+                  <button class="region-btn" data-size="Italy">🇮🇹 Italy</button>
+                  <button class="region-btn" data-size="Austria">
+                    🇦🇹 Austria
+                  </button>
+                  <button class="region-btn" data-size="Spain">🇪🇸 Spain</button>
+                  <button class="region-btn" data-size="Europe">
+                    🇪🇺 Europe
+                  </button>
+                  <button class="region-btn" data-size="Asia">🇦🇸 Asia</button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+
+        <!-- Section 3: Advanced -->
+        <div class="setup-section" data-section="advanced">
+          <div class="section-header">
+            <div class="section-title">
+              <span class="section-icon">⚙️</span>
+              <span>Advanced</span>
+            </div>
+            <span class="section-arrow">▼</span>
+          </div>
+          <div class="section-content">
+            <div class="section-inner">
+              <input
+                type="text"
+                id="seedInput"
+                class="setup-input"
+                placeholder="Custom game seed (optional)"
+              />
+              <div class="seed-helper">Leave empty for a random seed</div>
+            </div>
+          </div>
+        </div>
+
         <div id="initialSetupError"></div>
         <button id="continueBtn">Continue to Map</button>
       </div>
@@ -191,6 +259,7 @@
         isPointInPolygon,
       } from "./PlanarPolygon.js";
       import { drawRandomBarFromDensityGrid } from "./GlobalBarSelection.js";
+      import { GAME_BOUNDS_Regions } from "./GameBounds.js";
 
       // Make the function global so other scripts can see it
       window.buildPolygon = buildPolygon;
@@ -202,6 +271,8 @@
       window.lonLatToCartesian = lonLatToCartesian;
 
       window.drawRandomBarFromDensityGrid = drawRandomBarFromDensityGrid;
+
+      window.GAME_BOUNDS_Regions = GAME_BOUNDS_Regions;
     </script>
     <script>
       // --- DOM ELEMENTS ---
@@ -227,28 +298,14 @@
         XL: 25,
         XXL: 100,
         XXXL: 500,
-        Switzerland: null,
-        Europe: null,
       };
+
       let selectedSize = "M";
-      let gameMode = "custom"; // 'custom' or 'region'
+      let selectedMode = "custom"; // 'custom' or 'region'
 
       // --- GAME STATE & VARS ---
       let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
       let centerLocation = { lat: 47.3769, lng: 8.5417 };
-
-      let GAME_BOUNDS_Switzerland = {
-        south: 45.817,
-        north: 47.808,
-        west: 5.955,
-        east: 10.492,
-      };
-      let GAME_BOUNDS_Europe = {
-        south: 34.5,
-        north: 71.2,
-        west: -25.0,
-        east: 40.0,
-      };
 
       let gameState = {
         targetBar: null,
@@ -339,8 +396,9 @@
 
       async function fetchBarsInBounds() {
         const overpassUrl = "https://overpass-api.de/api/interpreter";
+        // TODO
         const query = `
-                [out:json][timeout:25];
+                [out:json][timeout:100];
                 (
                   node["amenity"="bar"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
                   node["amenity"="pub"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
@@ -427,7 +485,7 @@
         // FIX 1: Fetch bars once and store them
         showMessage("Searching for bars in the area...", "success");
         try {
-          if (gameMode === "region") {
+          if (selectedMode === "region") {
             allBarsInArea = await drawRandomBarFromDensityGrid(GAME_BOUNDS);
           } else {
             allBarsInArea = await fetchBarsInBounds();
@@ -475,7 +533,7 @@
             [GAME_BOUNDS.south, GAME_BOUNDS.west],
             [GAME_BOUNDS.north, GAME_BOUNDS.east],
           ],
-          { color: "#667eea", weight: 2, fillOpacity: 0.1, dashArray: "5, 5" }
+          { color: "#eb5e4b", weight: 2, fillOpacity: 0.05, dashArray: "5, 5" }
         ).addTo(map);
         gameArea.bindPopup("Game Area - Find bars within this zone!");
 
@@ -595,10 +653,10 @@
 
         const leafletCoords = eliminationZone.map((c) => [c[1], c[0]]);
         const zone = L.polygon(leafletCoords, {
-          color: "#dc2626",
+          color: "#667eea",
           weight: 1,
-          fillColor: "#ef4444",
-          fillOpacity: 0.2,
+          fillColor: "#4f6df1",
+          fillOpacity: 0.1,
         }).addTo(map);
         eliminationZones.push(zone);
         // INSIDE: Update bars inside elimination zones
@@ -698,7 +756,7 @@
           let location = await geocodeLocation(query, currentBounds);
           if (!location) {
             location = await geocodeLocation(query, null);
-         }
+          }
           //const location = await geocodeLocation(query);
           if (
             location.lat < GAME_BOUNDS.south ||
@@ -733,7 +791,6 @@
             boundaryIntersections[1]
           );
           const leafletCoords = linePoints.map((c) => [c[1], c[0]]);
-          console.log("Line Points:", linePoints);
 
           if (linePoints.length >= 2) {
             previewMarker = L.marker([location.lat, location.lng], {
@@ -742,21 +799,21 @@
 
             previewLine = L.polyline(leafletCoords, {
               color: "#f97316",
-              weight: 4,
+              weight: 3,
               opacity: 0.8,
-              dashArray: "8, 8",
+              dashArray: "8, 6",
             }).addTo(map);
 
             // Compute bounds just from the previous and previewed bar
             const bounds = L.latLngBounds(
-                [prevLocation.lat, prevLocation.lng],
-                [location.lat, location.lng]
+              [prevLocation.lat, prevLocation.lng],
+              [location.lat, location.lng]
             );
 
             // Add some relative padding and limit zoom-in level
             map.fitBounds(bounds, {
-                padding: [100, 100],  // padding in pixels
-                maxZoom: 16,          // prevent over-zooming
+              padding: [100, 100], // padding in pixels
+              maxZoom: 16, // prevent over-zooming
             });
 
             setButtonsToPreviewState(true);
@@ -803,6 +860,7 @@
         barInput.value = "";
 
         selectedSize = "M";
+        selectedMode = "custom";
         document
           .querySelectorAll(".size-btn")
           .forEach((b) => b.classList.remove("selected"));
@@ -880,12 +938,8 @@
       }
 
       function calculateBoundsFromCenter(center, size) {
-        if (size === "Switzerland") {
-          gameMode = "region";
-          return GAME_BOUNDS_Switzerland;
-        } else if (size === "Europe") {
-          gameMode = "region";
-          return GAME_BOUNDS_Europe;
+        if (selectedMode == "region") {
+          return GAME_BOUNDS_Regions[size];
         } else {
           offset = SIZE_PRESETS[size] / 2;
           delta_lat = (offset / 6371) * (180 / Math.PI);
@@ -902,13 +956,57 @@
       }
 
       // --- EVENT LISTENERS ---
+      // Tab functionality (update your existing tab code)
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tabName = btn.dataset.tab;
+          selectedMode = tabName; // Set to 'custom' or 'region'
+
+          // Update tab buttons
+          document.querySelectorAll(".tab-btn").forEach((b) => {
+            b.classList.remove("active");
+          });
+          btn.classList.add("active");
+
+          // Update tab content
+          document.querySelectorAll(".tab-content").forEach((content) => {
+            content.classList.remove("active");
+          });
+          document
+            .querySelector(`[data-tab-content="${tabName}"]`)
+            .classList.add("active");
+        });
+      });
+
+      // Custom size button functionality (update your existing code)
       document.querySelectorAll(".size-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
+          // Deselect all size and region buttons
           document
             .querySelectorAll(".size-btn")
             .forEach((b) => b.classList.remove("selected"));
+          document
+            .querySelectorAll(".region-btn")
+            .forEach((b) => b.classList.remove("selected"));
+
           btn.classList.add("selected");
-          selectedSize = btn.dataset.size;
+          selectedSize = btn.dataset.size; // Store the size
+        });
+      });
+
+      // Region button functionality (update your existing code)
+      document.querySelectorAll(".region-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // Deselect all size and region buttons
+          document
+            .querySelectorAll(".size-btn")
+            .forEach((b) => b.classList.remove("selected"));
+          document
+            .querySelectorAll(".region-btn")
+            .forEach((b) => b.classList.remove("selected"));
+
+          btn.classList.add("selected");
+          selectedSize = btn.dataset.size; // Store the country/region
         });
       });
 
@@ -1017,6 +1115,114 @@
           previewBtn.click();
         }
       });
+
+      // Accordion functionality
+      document.querySelectorAll(".section-header").forEach((header) => {
+        header.addEventListener("click", () => {
+          const section = header.parentElement;
+          const wasActive = section.classList.contains("active");
+
+          // Close all sections
+          document.querySelectorAll(".setup-section").forEach((s) => {
+            s.classList.remove("active");
+          });
+
+          // Open clicked section if it wasn't already active
+          if (!wasActive) {
+            section.classList.add("active");
+          }
+        });
+      });
+
+      // Tab functionality
+      document.querySelectorAll(".tab-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const tabName = btn.dataset.tab;
+
+          // Update tab buttons
+          document.querySelectorAll(".tab-btn").forEach((b) => {
+            b.classList.remove("active");
+          });
+          btn.classList.add("active");
+
+          // Update tab content
+          document.querySelectorAll(".tab-content").forEach((content) => {
+            content.classList.remove("active");
+          });
+          document
+            .querySelector(`[data-tab-content="${tabName}"]`)
+            .classList.add("active");
+        });
+      });
+
+      // Custom size button functionality
+      document.querySelectorAll(".size-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // Deselect all size and region buttons
+          document
+            .querySelectorAll(".size-btn")
+            .forEach((b) => b.classList.remove("selected"));
+          document
+            .querySelectorAll(".region-btn")
+            .forEach((b) => b.classList.remove("selected"));
+
+          btn.classList.add("selected");
+          selectedSize = btn.dataset.size;
+        });
+      });
+
+      // Region button functionality
+      document.querySelectorAll(".region-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          // Deselect all size and region buttons
+          document
+            .querySelectorAll(".size-btn")
+            .forEach((b) => b.classList.remove("selected"));
+          document
+            .querySelectorAll(".region-btn")
+            .forEach((b) => b.classList.remove("selected"));
+
+          btn.classList.add("selected");
+          selectedSize = btn.dataset.size;
+        });
+      });
+
+      // Your existing continueBtn code stays the same
+      continueBtn.addEventListener("click", async () => {
+        const initialSetupError = document.getElementById("initialSetupError");
+        initialSetupError.textContent = "";
+        continueBtn.disabled = true;
+        continueBtn.textContent = "Loading...";
+
+        try {
+          const startLocName = document
+            .getElementById("startLocationInput")
+            .value.trim();
+          if (!startLocName)
+            throw new Error("Please enter a starting location.");
+          // Get seed from input or generate random one
+          const seedInput = document.getElementById("seedInput").value.trim();
+          SEED = seedInput || Math.random().toString(36).substring(2, 10);
+
+          const startLocCoords = await geocodeLocation(startLocName);
+          gameState.startingPoint = { name: startLocName, ...startLocCoords };
+          centerLocation = startLocCoords;
+
+          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
+
+          initialSetupScreen.classList.add("hidden");
+          boundarySetupScreen.classList.remove("hidden");
+
+          setTimeout(initBoundaryMap, 10);
+        } catch (error) {
+          initialSetupError.textContent = `Error: ${error.message}`;
+        } finally {
+          continueBtn.disabled = false;
+          continueBtn.textContent = "Continue to Map";
+        }
+      });
+
+      // Rest of your existing code continues...
     </script>
   </body>
 </html>
