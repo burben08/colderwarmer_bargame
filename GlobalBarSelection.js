@@ -6,60 +6,126 @@ async function load_grid_from_json() {
   return data;
 }
 
-async function getWeightedCells(GAME_BOUNDS) {
-  const grid = await load_grid_from_json();
-  const weightedCells = [];
-  let totalWeight = 0;
+/**
+ * Calculates the overlap ratio between two boundary boxes.
+ * @param {object} cellBounds - The bounds of the grid cell { south, west, north, east }.
+ * @param {object} gameBounds - The bounds of the custom game area { south, west, north, east }.
+ * @returns {number} The overlap ratio, from 0.0 (no overlap) to 1.0 (full overlap).
+ */
+function calculateOverlapRatio(cellBounds, gameBounds) {
+    // 1. Find the boundaries of the intersection rectangle
+    const intersectSouth = Math.max(cellBounds.south, gameBounds.south);
+    const intersectWest = Math.max(cellBounds.west, gameBounds.west);
+    const intersectNorth = Math.min(cellBounds.north, gameBounds.north);
+    const intersectEast = Math.min(cellBounds.east, gameBounds.east);
 
-  console.log(grid);
-
-  // Loop through the grid
-  for (const key in grid) {
-    const [lat_s, lon_w] = key.split("_").map(parseFloat);
-    const lat_n = lat_s + 2.0; // Assuming 2.0 step
-    const lon_e = lon_w + 2.0; // Assuming 2.0 step
-
-    // Check if this cell *overlaps* with the game bounds
-    const overlaps =
-      lat_s < GAME_BOUNDS.north &&
-      lat_n > GAME_BOUNDS.south &&
-      lon_w < GAME_BOUNDS.east &&
-      lon_e > GAME_BOUNDS.west;
-
-    const count = grid[key];
-
-    if (overlaps && count > 0) {
-      weightedCells.push({
-        key: key,
-        bounds: { south: lat_s, west: lon_w, north: lat_n, east: lon_e },
-        count: count,
-      });
-      totalWeight += count;
+    // 2. Check if there is any overlap
+    // If north < south or east < west, the rectangles do not overlap.
+    if (intersectNorth <= intersectSouth || intersectEast <= intersectWest) {
+        return 0.0;
     }
-  }
-  return { weightedCells, totalWeight };
+
+    // 3. Calculate areas in "degree-squared" units
+    // The distortion (cos(lat)) cancels out when we take the ratio.
+    const intersectArea = (intersectNorth - intersectSouth) * (intersectEast - intersectWest);
+    const cellArea = (cellBounds.north - cellBounds.south) * (cellBounds.east - cellBounds.west);
+
+    // 4. Return the ratio
+    // (Handle potential division by zero, though cellArea should always be > 0)
+    return cellArea > 0 ? intersectArea / cellArea : 0.0;
 }
 
-function pickRandomCell(weightedCells, totalWeight) {
-  let randomNum = Math.random() * totalWeight;
+/**
+ * Generates a list of weighted cells based on their bar count
+ * and partial overlap with the game bounds.
+ * * @param {object} barDensityGrid - The full { 'lat_lon': count } object.
+ * @param {object} gameBounds - The custom game area { south, west, north, east }.
+ * @param {number} gridStep - The size of your grid cells (e.g., 1.0 for 1x1).
+ * @returns {object} An object containing { weightedCells, totalWeight }.
+ */
+function getAdjustedWeightedCells(barDensityGrid, gameBounds, gridStep) {
+    const weightedCells = [];
+    let totalWeight = 0.0;
 
-  for (const cell of weightedCells) {
-    if (randomNum < cell.count) {
-      return cell; // This is the chosen cell
+    for (const key in barDensityGrid) {
+        const count = barDensityGrid[key];
+
+        // Skip empty cells immediately
+        if (count === 0) {
+            continue;
+        }
+
+        // Re-create the cell's bounds from its key
+        const [lat_s, lon_w] = key.split('_').map(parseFloat);
+        const cellBounds = {
+            south: lat_s,
+            west: lon_w,
+            north: lat_s + gridStep,
+            east: lon_w + gridStep
+        };
+
+        // Calculate the overlap
+        const overlapRatio = calculateOverlapRatio(cellBounds, gameBounds);
+
+        // If the cell overlaps, calculate its new weight and add it
+        if (overlapRatio > 0.0) {
+            // This is the crucial part:
+            const adjustedWeight = count * overlapRatio;
+
+            weightedCells.push({
+                key: key,
+                bounds: cellBounds,
+                originalCount: count,
+                weight: adjustedWeight // Use this new weight for selection
+            });
+            
+            totalWeight += adjustedWeight;
+        }
     }
-    randomNum -= cell.count;
-  }
-  // Fallback in case of rounding errors
-  return weightedCells[weightedCells.length - 1];
+    
+    // We round the total weight slightly to avoid floating point issues
+    return { weightedCells, totalWeight: parseFloat(totalWeight.toFixed(5)) };
+}
+
+/**
+ * Picks a random cell from the list, respecting the new adjusted weights.
+ * @param {Array} weightedCells - The list from getAdjustedWeightedCells.
+ *V @param {number} totalWeight - The total weight from getAdjustedWeightedCells.
+ * @returns {object} The chosen cell object.
+ */
+function pickRandomCell(weightedCells, totalWeight) {
+    if (weightedCells.length === 0 || totalWeight <= 0) {
+        throw new Error("No weighted cells found in this area.");
+    }
+
+    let randomNum = Math.random() * totalWeight;
+
+    for (const cell of weightedCells) {
+        // Use the new decimal weight
+        if (randomNum < cell.weight) {
+            return cell; // This is the chosen cell
+        }
+        randomNum -= cell.weight;
+    }
+
+    // Fallback for floating point errors
+    return weightedCells[weightedCells.length - 1];
 }
 
 // --- Your new logic ---
 
 export async function drawRandomBarFromDensityGrid(GAME_BOUNDS) {
+  const GRID_STEP = 2.0;
+
+  const barDensityGrid = await load_grid_from_json(); // could be loaded in main file!!
+
+  const { weightedCells, totalWeight } = getAdjustedWeightedCells(
+    barDensityGrid,
+    GAME_BOUNDS,
+    GRID_STEP
+  );
+
   // 1. Get weighted cells inside your large GAME_BOUNDS
-  const { weightedCells, totalWeight } = await getWeightedCells(GAME_BOUNDS);
-  console.log("Weighted cells found:", weightedCells.length);
-  console.log("Total weight:", totalWeight);
   if (weightedCells.length === 0) {
     throw new Error("No bars found in any grid cell in this area.");
   }
@@ -81,9 +147,6 @@ export async function drawRandomBarFromDensityGrid(GAME_BOUNDS) {
   // I've modified it to accept bounds as an argument:
   const barsInCell = await fetchBarsInBounds(queryBounds);
 
-  // 5. Pick a random bar from this much smaller list
-  const randomBar = barsInCell[Math.floor(Math.random() * barsInCell.length)];
-
   return barsInCell;
 }
 
@@ -92,7 +155,7 @@ export async function drawRandomBarFromDensityGrid(GAME_BOUNDS) {
 async function fetchBarsInBounds(bounds) {
   const overpassUrl = "https://overpass-api.de/api/interpreter";
   const query = `
-        [out:json][timeout:25];
+        [out:json][timeout:100];
         (
             node["amenity"="bar"](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
             node["amenity"="pub"](${bounds.south},${bounds.west},${bounds.north},${bounds.east});
