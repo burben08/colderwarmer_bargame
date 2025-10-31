@@ -292,12 +292,12 @@
 
       // --- SIZE PRESETS ---
       const SIZE_PRESETS = {
-        S: 1, //km
-        M: 2,
-        L: 10,
-        XL: 25,
-        XXL: 100,
-        XXXL: 500,
+        XS: 1, //km
+        S: 2,
+        M: 10,
+        L: 25,
+        XL: 100,
+        XXL: 500,
       };
 
       let selectedSize = "M";
@@ -390,8 +390,12 @@
         const data = await response.json();
         if (!data.features || data.features.length === 0) return null;
 
+        const name = data.features[0].properties.name;
         const { coordinates } = data.features[0].geometry;
-        return { lat: coordinates[1], lng: coordinates[0] };
+        return {
+          location: { lat: coordinates[1], lng: coordinates[0] },
+          name,
+        };
       }
 
       async function fetchBarsInBounds() {
@@ -576,12 +580,13 @@
         map.fitBounds(gameArea.getBounds(), { padding: [10, 10] });
       }
 
-      async function tryBar() {
+      async function confirmBar() {
         if (gameState.gameWon || !previewedLocation) return;
 
         const userEnteredName = barInput.value.trim();
-        const foundBarName = await findClosestBarName(previewedLocation);
-        const location = previewedLocation;
+        //const foundBarName = await findClosestBarName(previewedLocation);
+        const foundBarName = previewedLocation.name;
+        const location = previewedLocation.location;
         clearPreview();
 
         const prevLocation =
@@ -672,7 +677,7 @@
         }
 
         updatePath();
-        map.flyTo([location.lat, location.lng], Math.max(map.getZoom(), 16), {
+        map.flyTo([location.lat, location.lng], Math.max(map.getZoom(), 14), {
           duration: 1,
         });
         document.getElementById("visitCount").textContent =
@@ -753,9 +758,9 @@
           };
 
           // try searching within current map window first
-          let location = await geocodeLocation(query, currentBounds);
-          if (!location) {
-            location = await geocodeLocation(query, null);
+          let bar = await geocodeLocation(query, currentBounds);
+          if (!bar) {
+            bar = await geocodeLocation(query, null);
           }
           //const location = await geocodeLocation(query);
           if (
@@ -767,7 +772,7 @@
             showMessage(`'${query}' is outside the game area.`, "error");
             return;
           }
-          previewedLocation = location;
+          previewedLocation = bar;
 
           const prevLocation =
             gameState.visitedBars.length > 0
@@ -775,12 +780,12 @@
               : gameState.startingPoint;
 
           const p1_lonlat = [prevLocation.lng, prevLocation.lat];
-          const p2_lonlat = [location.lng, location.lat];
+          const p2_lonlat = [bar.location.lng, bar.location.lat];
           const p1_xy = window.lonLatToCartesian(
             prevLocation.lng,
             prevLocation.lat
           );
-          const p2_xy = window.lonLatToCartesian(location.lng, location.lat);
+          const p2_xy = window.lonLatToCartesian(bar.location.lng, bar.location.lat);
           const boundaryIntersections = window.getIntersections(
             p1_lonlat,
             p2_lonlat,
@@ -793,7 +798,7 @@
           const leafletCoords = linePoints.map((c) => [c[1], c[0]]);
 
           if (linePoints.length >= 2) {
-            previewMarker = L.marker([location.lat, location.lng], {
+            previewMarker = L.marker([bar.location.lat, bar.location.lng], {
               icon: previewIcon,
             }).addTo(map);
 
@@ -807,13 +812,13 @@
             // Compute bounds just from the previous and previewed bar
             const bounds = L.latLngBounds(
               [prevLocation.lat, prevLocation.lng],
-              [location.lat, location.lng]
+              [bar.location.lat, bar.location.lng]
             );
 
             // Add some relative padding and limit zoom-in level
             map.fitBounds(bounds, {
               padding: [100, 100], // padding in pixels
-              maxZoom: 16, // prevent over-zooming
+              maxZoom: 14, // prevent over-zooming
             });
 
             setButtonsToPreviewState(true);
@@ -859,8 +864,8 @@
         document.getElementById("message").textContent = "";
         barInput.value = "";
 
-        selectedSize = "M";
-        selectedMode = "custom";
+        //selectedSize = "M";
+        //selectedMode = "custom";
         document
           .querySelectorAll(".size-btn")
           .forEach((b) => b.classList.remove("selected"));
@@ -1027,7 +1032,8 @@
           SEED = seedInput || Math.random().toString(36).substring(2, 10);
 
           GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
-          const startLocCoords = await geocodeLocation(startLocName);
+          const bar = await geocodeLocation(startLocName);
+          const startLocCoords = bar.location;
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
@@ -1107,7 +1113,7 @@
       });
 
       previewBtn.addEventListener("click", previewBar);
-      confirmBtn.addEventListener("click", tryBar);
+      confirmBtn.addEventListener("click", confirmBar);
       cancelBtn.addEventListener("click", clearPreview);
       resetBtn.addEventListener("click", resetGame);
       barInput.addEventListener("keypress", (e) => {
@@ -1204,7 +1210,8 @@
           const seedInput = document.getElementById("seedInput").value.trim();
           SEED = seedInput || Math.random().toString(36).substring(2, 10);
 
-          const startLocCoords = await geocodeLocation(startLocName);
+          const bar = await geocodeLocation(startLocName);
+          const startLocCoords = bar.location;
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
