@@ -124,7 +124,6 @@ function getBoundaryIntersections(p1LonLat, p2LonLat) {
 
   // Boundary lines defined by [lon, lat] points
   // Reads from the module-level variable
-  console.log('CURRENT_GAME_BOUNDS_CORNERS_LONLAT:', CURRENT_GAME_BOUNDS_CORNERS_LONLAT);
   const boundaryLines = [
     [CURRENT_GAME_BOUNDS_CORNERS_LONLAT[1], CURRENT_GAME_BOUNDS_CORNERS_LONLAT[0]], // West
     [CURRENT_GAME_BOUNDS_CORNERS_LONLAT[2], CURRENT_GAME_BOUNDS_CORNERS_LONLAT[1]], // North
@@ -227,20 +226,21 @@ function getIntersectionWithConstantLat(p1LonLat, p2LonLat, latC) {
 // Input: p1LonLat, p2LonLat as [lon, lat]
 // Output: Array of intersection points [lon, lat]
 export function getIntersections(p1LonLat, p2LonLat, GAME_BOUNDS = null) {
-  const bisectionLine = getBisectionLine(p1LonLat, p2LonLat)
-  // Reads from module-level variable
-  let northBoundIntersections = getIntersectionWithConstantLat(bisectionLine[0], bisectionLine[1], CURRENT_GAME_BOUNDS.north)
-  let southBoundIntersections = getIntersectionWithConstantLat(bisectionLine[0], bisectionLine[1], CURRENT_GAME_BOUNDS.south)
-
   if (GAME_BOUNDS !== null) {
     CURRENT_GAME_BOUNDS = GAME_BOUNDS;
     CURRENT_GAME_BOUNDS_CORNERS_LONLAT = [
       [GAME_BOUNDS.west, GAME_BOUNDS.south], // SW
       [GAME_BOUNDS.west, GAME_BOUNDS.north], // NW
       [GAME_BOUNDS.east, GAME_BOUNDS.north], // NE
-      [GAME_BOUNDS.east, GAME_BOUNDS.south]  // SE
+      [GAME_BOUNDS.east, GAME_BOUNDS.south], // SE
     ];
   }
+  
+  const bisectionLine = getBisectionLine(p1LonLat, p2LonLat)
+  // Reads from module-level variable
+  let northBoundIntersections = getIntersectionWithConstantLat(bisectionLine[0], bisectionLine[1], CURRENT_GAME_BOUNDS.north)
+  let southBoundIntersections = getIntersectionWithConstantLat(bisectionLine[0], bisectionLine[1], CURRENT_GAME_BOUNDS.south)
+
   // These are intersections with the *great circles* forming the boundary
   const rectangleIntersections = getBoundaryIntersections(p1LonLat, p2LonLat);
 
