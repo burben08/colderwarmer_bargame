@@ -93,12 +93,13 @@ function getAdjustedWeightedCells(barDensityGrid, gameBounds, gridStep) {
  *V @param {number} totalWeight - The total weight from getAdjustedWeightedCells.
  * @returns {object} The chosen cell object.
  */
-function pickRandomCell(weightedCells, totalWeight) {
+function pickRandomCell(weightedCells, totalWeight, SEED) {
     if (weightedCells.length === 0 || totalWeight <= 0) {
         throw new Error("No weighted cells found in this area.");
     }
 
-    let randomNum = Math.random() * totalWeight;
+    const rng = new Math.seedrandom(SEED);
+    let randomNum = rng() * totalWeight;
 
     for (const cell of weightedCells) {
         // Use the new decimal weight
@@ -114,8 +115,9 @@ function pickRandomCell(weightedCells, totalWeight) {
 
 // --- Your new logic ---
 
-export async function drawRandomBarFromDensityGrid(GAME_BOUNDS) {
+export async function drawRandomBarFromDensityGrid(GAME_BOUNDS, SEED) {
   const GRID_STEP = 2.0;
+
 
   const barDensityGrid = await load_grid_from_json(); // could be loaded in main file!!
 
@@ -131,7 +133,7 @@ export async function drawRandomBarFromDensityGrid(GAME_BOUNDS) {
   }
 
   // 2. Pick one cell, weighted by its bar count
-  const chosenCell = pickRandomCell(weightedCells, totalWeight);
+  const chosenCell = pickRandomCell(weightedCells, totalWeight, SEED);
 
   // 3. IMPORTANT: Use the chosen cell's bounds for the Overpass query.
   // We must also clip these bounds to be *within* the original GAME_BOUNDS
