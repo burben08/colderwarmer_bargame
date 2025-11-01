@@ -85,7 +85,6 @@
                   <button class="region-btn" data-size="Europe">
                     🇪🇺 Europe
                   </button>
-                  <button class="region-btn" data-size="Asia">🇦🇸 Asia</button>
                 </div>
               </div>
             </div>
@@ -101,8 +100,10 @@
             </div>
             <span class="section-arrow">▼</span>
           </div>
+
           <div class="section-content">
             <div class="section-inner">
+              <h3 class="sub-title">Seed</h3>
               <input
                 type="text"
                 id="seedInput"
@@ -110,6 +111,15 @@
                 placeholder="Custom game seed (optional)"
               />
               <div class="seed-helper">Leave empty for a random seed</div>
+            </div>
+
+            <div class="section-inner">
+              <h3 class="sub-title">Hidden Locations</h3>
+              <label class="checkbox-container">
+                Restaurants
+                <input type="checkbox" id="restaurantCheckbox" />
+                <span class="checkmark"></span>
+              </label>
             </div>
           </div>
         </div>
@@ -290,22 +300,21 @@
       const cancelBtn = document.getElementById("cancelBtn");
       const resetBtn = document.getElementById("resetBtn");
 
+      const restaurantCheckbox = document.getElementById("restaurantCheckbox");
+
       // --- SIZE PRESETS ---
       const SIZE_PRESETS = {
-        XS: 1, //km
-        S: 2,
-        M: 10,
-        L: 25,
-        XL: 100,
-        XXL: 500,
+        S: 1, //km
+        M: 2,
+        L: 5,
+        XL: 10,
+        XXL: 50,
+        XXXL: 500,
       };
 
-      let selectedSize = "M";
-      let selectedMode = "custom"; // 'custom' or 'region'
-
       // --- GAME STATE & VARS ---
-      let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
       let centerLocation = { lat: 47.3769, lng: 8.5417 };
+      let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
 
       let gameState = {
         targetBar: null,
@@ -314,7 +323,11 @@
         visitCount: 0,
         gameWon: false,
         startingPoint: { name: "Paradeplatz", lat: 47.3697, lng: 8.5392 },
+        selectedSize: "M",
+        selectedMode: "custom",
+        restaurantsConsidered: false,
       };
+
       let allBarsInArea = []; // FIX 1: To store bars and prevent re-fetching
       let previewedLocation = null;
       let map = null;
@@ -400,15 +413,21 @@
 
       async function fetchBarsInBounds() {
         const overpassUrl = "https://overpass-api.de/api/interpreter";
-        // TODO
+
+        const locationTypes = ["bar", "pub"];
+        if (gameState.restaurantsConsidered) locationTypes.push("restaurant");
+
+        const bounds = `${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east}`;
+
         const query = `
-                [out:json][timeout:100];
-                (
-                  node["amenity"="bar"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
-                  node["amenity"="pub"](${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east});
-                );
-                out body;
-            `;
+        [out:json][timeout:100];
+        (
+          ${locationTypes
+            .map((a) => `node["amenity"="${a}"](${bounds});`)
+            .join("\n    ")}
+        );
+        out body;
+      `;
 
         const response = await fetch(overpassUrl, {
           method: "POST",
@@ -448,6 +467,7 @@
           }, 3000);
         }
       }
+
       function updatePath() {
         if (pathLine) map.removeLayer(pathLine);
         if (gameState.visitedBars.length > 0) {
@@ -486,17 +506,22 @@
         eliminationZones = [];
         clearPreview();
 
+        // Set Seed
+        if (!SEED) {
+          SEED = Math.random().toString(36).substring(2, 10);
+        }
+
         // FIX 1: Fetch bars once and store them
         showMessage("Searching for bars in the area...", "success");
         try {
-          if (selectedMode === "region") {
-            allBarsInArea = await drawRandomBarFromDensityGrid(GAME_BOUNDS);
+          if (gameState.selectedMode === "region") {
+            allBarsInArea = await drawRandomBarFromDensityGrid(GAME_BOUNDS, SEED);
           } else {
             allBarsInArea = await fetchBarsInBounds();
           }
         } catch (error) {
           showMessage(error.message, "error");
-          setTimeout(resetGame, 3000);
+          setTimeout(resetGame, 2000);
           return;
         }
         const bars = allBarsInArea; // Use the global list for setup
@@ -521,10 +546,6 @@
 
             markers.push(marker);
           });
-        }
-
-        if (!SEED) {
-          SEED = Math.random().toString(36).substring(2, 10);
         }
 
         const rng = new Math.seedrandom(SEED);
@@ -573,6 +594,7 @@
           gameState.startingPoint.name;
         barInput.disabled = false;
         previewBtn.disabled = false;
+        
         showMessage(
           `Game started! ${bars.length} bars found in area. Find the hidden bar.`,
           "success"
@@ -640,21 +662,11 @@
 
         let eliminationZone;
 
-        //if (selectedSize == 'S' || selectedSize == 'M' || selectedSize == 'L') {
-        if (selectedSize == null) {
-          eliminationZone = window.createEliminationZone(
-            prevLocation,
-            location,
-            GAME_BOUNDS,
-            isWarmer
-          );
-        } else {
-          eliminationZone = window.buildPolygon(
-            GAME_BOUNDS,
-            [pt1LonLat, pt2LonLat],
-            isWarmer
-          );
-        }
+        eliminationZone = window.buildPolygon(
+          GAME_BOUNDS,
+          [pt1LonLat, pt2LonLat],
+          isWarmer
+        );
 
         const leafletCoords = eliminationZone.map((c) => [c[1], c[0]]);
         const zone = L.polygon(leafletCoords, {
@@ -772,6 +784,7 @@
             showMessage(`'${query}' is outside the game area.`, "error");
             return;
           }
+          // Save found bar for confirmation
           previewedLocation = bar;
 
           const prevLocation =
@@ -785,7 +798,10 @@
             prevLocation.lng,
             prevLocation.lat
           );
-          const p2_xy = window.lonLatToCartesian(bar.location.lng, bar.location.lat);
+          const p2_xy = window.lonLatToCartesian(
+            bar.location.lng,
+            bar.location.lat
+          );
           const boundaryIntersections = window.getIntersections(
             p1_lonlat,
             p2_lonlat,
@@ -943,7 +959,7 @@
       }
 
       function calculateBoundsFromCenter(center, size) {
-        if (selectedMode == "region") {
+        if (gameState.selectedMode == "region") {
           return GAME_BOUNDS_Regions[size];
         } else {
           offset = SIZE_PRESETS[size] / 2;
@@ -965,7 +981,7 @@
       document.querySelectorAll(".tab-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const tabName = btn.dataset.tab;
-          selectedMode = tabName; // Set to 'custom' or 'region'
+          gameState.selectedMode = tabName; // Set to 'custom' or 'region'
 
           // Update tab buttons
           document.querySelectorAll(".tab-btn").forEach((b) => {
@@ -995,7 +1011,7 @@
             .forEach((b) => b.classList.remove("selected"));
 
           btn.classList.add("selected");
-          selectedSize = btn.dataset.size; // Store the size
+          gameState.selectedSize = btn.dataset.size; // Store the size
         });
       });
 
@@ -1011,7 +1027,7 @@
             .forEach((b) => b.classList.remove("selected"));
 
           btn.classList.add("selected");
-          selectedSize = btn.dataset.size; // Store the country/region
+          gameState.selectedSize = btn.dataset.size; // Store the country/region
         });
       });
 
@@ -1031,13 +1047,13 @@
           const seedInput = document.getElementById("seedInput").value.trim();
           SEED = seedInput || Math.random().toString(36).substring(2, 10);
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
+          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
           const bar = await geocodeLocation(startLocName);
           const startLocCoords = bar.location;
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
+          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
 
           initialSetupScreen.classList.add("hidden");
           boundarySetupScreen.classList.remove("hidden");
@@ -1121,6 +1137,9 @@
           previewBtn.click();
         }
       });
+      restaurantCheckbox.addEventListener("change", (e) => {
+        gameState.restaurantsConsidered = e.target.checked;
+      });
 
       // Accordion functionality
       document.querySelectorAll(".section-header").forEach((header) => {
@@ -1173,7 +1192,7 @@
             .forEach((b) => b.classList.remove("selected"));
 
           btn.classList.add("selected");
-          selectedSize = btn.dataset.size;
+          gameState.selectedSize = btn.dataset.size;
         });
       });
 
@@ -1189,7 +1208,7 @@
             .forEach((b) => b.classList.remove("selected"));
 
           btn.classList.add("selected");
-          selectedSize = btn.dataset.size;
+          gameState.selectedSize = btn.dataset.size;
         });
       });
 
@@ -1215,7 +1234,7 @@
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, selectedSize);
+          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
 
           initialSetupScreen.classList.add("hidden");
           boundarySetupScreen.classList.remove("hidden");
