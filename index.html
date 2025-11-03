@@ -137,73 +137,41 @@
         <div class="boundary-adjust">
           <div class="boundary-row">
             <label>North</label>
-            <button
-              class="adjust-btn"
-              data-direction="north"
-              data-amount="-0.001"
-            >
+            <button class="adjust-btn" data-direction="north" data-amount="">
               −
             </button>
-            <span class="boundary-value" id="northValue">47.390</span>
-            <button
-              class="adjust-btn"
-              data-direction="north"
-              data-amount="0.001"
-            >
+            <span class="boundary-value" id="northValue">0</span>
+            <button class="adjust-btn" data-direction="north" data-amount="">
               +
             </button>
           </div>
           <div class="boundary-row">
             <label>South</label>
-            <button
-              class="adjust-btn"
-              data-direction="south"
-              data-amount="0.001"
-            >
+            <button class="adjust-btn" data-direction="south" data-amount="">
               −
             </button>
-            <span class="boundary-value" id="southValue">47.365</span>
-            <button
-              class="adjust-btn"
-              data-direction="south"
-              data-amount="-0.001"
-            >
+            <span class="boundary-value" id="southValue">0</span>
+            <button class="adjust-btn" data-direction="south" data-amount="">
               +
             </button>
           </div>
           <div class="boundary-row">
             <label>East</label>
-            <button
-              class="adjust-btn"
-              data-direction="east"
-              data-amount="-0.001"
-            >
+            <button class="adjust-btn" data-direction="east" data-amount="">
               −
             </button>
-            <span class="boundary-value" id="eastValue">8.560</span>
-            <button
-              class="adjust-btn"
-              data-direction="east"
-              data-amount="0.001"
-            >
+            <span class="boundary-value" id="eastValue">0</span>
+            <button class="adjust-btn" data-direction="east" data-amount="">
               +
             </button>
           </div>
           <div class="boundary-row">
             <label>West</label>
-            <button
-              class="adjust-btn"
-              data-direction="west"
-              data-amount="0.001"
-            >
+            <button class="adjust-btn" data-direction="west" data-amount="">
               −
             </button>
-            <span class="boundary-value" id="westValue">8.520</span>
-            <button
-              class="adjust-btn"
-              data-direction="west"
-              data-amount="-0.001"
-            >
+            <span class="boundary-value" id="westValue">0</span>
+            <button class="adjust-btn" data-direction="west" data-amount="">
               +
             </button>
           </div>
@@ -226,13 +194,14 @@
         <button id="seedInfoBtn" title="Show Seed">?</button>
         <h1>🍺 Find the Secret Bar</h1>
         <div class="game-info">
-          <span>🎯 Target: <strong id="targetBar">???</strong></span>
+          <!--<span>🎯 Target: <strong id="targetBar">???</strong></span>-->
+          <span>🗺️ Map Size: <strong id="mapSize">M</strong></span>
           <span>🏃 Visits: <strong id="visitCount">0</strong></span>
           <span
-            >🏁 Starting Point:
+            >📍 Starting Point:
             <strong id="startingBar">Paradeplatz</strong></span
           >
-          <span>Bars Remaining: <strong id="remainingBars">???</strong></span>
+          <!--<span>Bars Remaining: <strong id="remainingBars">???</strong></span>-->
         </div>
         <div class="search-container">
           <input
@@ -312,6 +281,10 @@
         XXXL: 500,
       };
 
+      const STEP_SIZES = Object.fromEntries(
+        Object.entries(SIZE_PRESETS).map(([key, value]) => [key, value / 10000]) // 1 km ≈ 0.01°, so 1/100 km ≈ 0.0001°
+      );
+
       // --- GAME STATE & VARS ---
       let centerLocation = { lat: 47.3769, lng: 8.5417 };
       let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
@@ -337,7 +310,6 @@
       let markers = [];
       let pathLine = null;
       let eliminationZones = [];
-      let eliminationPolygons = []; // INSIDE
       let remainingBarsEveryTurn = []; // INSIDE
       let previewLine = null;
       let previewMarker = null;
@@ -347,7 +319,7 @@
       const visitedIcon = (number, isWarmer) =>
         L.divIcon({
           html: `<div style="background: ${
-            isWarmer ? "#FF6347" : "#4169E1"
+            isWarmer ? "#e53e3e" : "#4169E1"
           }; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">${number}</div>`,
           className: "",
           iconSize: [32, 32],
@@ -361,15 +333,24 @@
         iconAnchor: [20, 20],
         popupAnchor: [0, -20],
       });
+      /**
       const startIcon = L.divIcon({
-        html: '<div style="background: #FFA500; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🏁</div>',
+        html: '<div style="background: #FFA500; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📍</div>',
         className: "",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
         popupAnchor: [0, -16],
       });
+      **/
+      const startIcon = L.divIcon({
+        html: '<div style="font-size: 32px;">📍</div>',
+        className: "",
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24],
+      });
       const previewIcon = L.divIcon({
-        html: '<div style="background: #f97316; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">?</div>',
+        html: '<div style="background: #757575; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">?</div>',
         className: "",
         iconSize: [32, 32],
         iconAnchor: [16, 16],
@@ -442,6 +423,7 @@
           .filter((el) => el.tags && el.tags.name)
           .map((el) => ({
             name: el.tags.name,
+            city: el.tags["addr:city"] || "",
             lat: el.lat,
             lng: el.lon,
             inside: true,
@@ -479,7 +461,7 @@
             color: "#667eea",
             weight: 3,
             opacity: 0.7,
-            dashArray: "10, 10",
+            dashArray: "8, 6",
           }).addTo(map);
         }
       }
@@ -515,7 +497,10 @@
         showMessage("Searching for bars in the area...", "success");
         try {
           if (gameState.selectedMode === "region") {
-            allBarsInArea = await drawRandomBarFromDensityGrid(GAME_BOUNDS, SEED);
+            allBarsInArea = await drawRandomBarFromDensityGrid(
+              GAME_BOUNDS,
+              SEED
+            );
           } else {
             allBarsInArea = await fetchBarsInBounds();
           }
@@ -551,7 +536,9 @@
         const rng = new Math.seedrandom(SEED);
         const targetBar = bars[Math.floor(rng() * bars.length)];
 
-        console.log("Target Bar: ", targetBar.name);
+        console.log("Target Bar: ", targetBar.name, targetBar.city);
+        console.log("Target city: ", targetBar.city);
+        console.log("Seed: ", SEED);
 
         gameArea = L.rectangle(
           [
@@ -573,11 +560,12 @@
           { icon: startIcon }
         ).addTo(map);
         startMarker.bindPopup(
-          `<div class="bar-popup"><h3>🏁 Starting Point</h3><p>${gameState.startingPoint.name}</p></div>`
+          `<div class="bar-popup"><h3>📍 Starting Point</h3><p>${gameState.startingPoint.name}</p></div>`
         );
         markers.push(startMarker);
 
         // INSIDE
+        /**
         if (SEED == "Hacker") {
           const remainingBars = allBarsInArea.filter(
             (bar) => bar.inside
@@ -587,14 +575,16 @@
             "remainingBars"
           ).textContent = `${remainingBars}/${bars.length}`;
         }
+          **/
 
-        document.getElementById("targetBar").textContent = "???";
+        //document.getElementById("targetBar").textContent = "???";
         document.getElementById("visitCount").textContent = "0";
         document.getElementById("startingBar").textContent =
           gameState.startingPoint.name;
         barInput.disabled = false;
         previewBtn.disabled = false;
-        
+        document.getElementById("mapSize").textContent = gameState.selectedSize;
+
         showMessage(
           `Game started! ${bars.length} bars found in area. Find the hidden bar.`,
           "success"
@@ -657,6 +647,8 @@
           .openPopup();
         markers.push(marker);
 
+        // Build elimination zone
+
         const pt1LonLat = [prevLocation.lng, prevLocation.lat];
         const pt2LonLat = [location.lng, location.lat];
 
@@ -676,6 +668,7 @@
           fillOpacity: 0.1,
         }).addTo(map);
         eliminationZones.push(zone);
+
         // INSIDE: Update bars inside elimination zones
         if (SEED == "Hacker") {
           allBarsInArea.forEach((bar) => {
@@ -697,8 +690,10 @@
 
         if (isWin) {
           gameState.gameWon = true;
+          /**
           document.getElementById("targetBar").textContent =
             gameState.targetBar;
+            **/
           showMessage(
             `🎉 Congratulations! You found ${gameState.targetBar} in ${gameState.visitCount} tries!`,
             "win"
@@ -711,6 +706,7 @@
             isWarmer ? "warmer" : "colder"
           );
           // INSIDE
+          /**
           if (SEED == "Hacker") {
             const remainingBars = allBarsInArea.filter(
               (bar) => bar.inside
@@ -720,6 +716,7 @@
               "remainingBars"
             ).textContent = `${remainingBars}/${allBarsInArea.length}`;
           }
+            **/
         }
       }
 
@@ -819,7 +816,7 @@
             }).addTo(map);
 
             previewLine = L.polyline(leafletCoords, {
-              color: "#f97316",
+              color: "#757575",
               weight: 3,
               opacity: 0.8,
               dashArray: "8, 6",
@@ -946,11 +943,11 @@
       function adjustBoundary(direction, amount) {
         GAME_BOUNDS[direction] += amount;
 
-        if (GAME_BOUNDS.north <= GAME_BOUNDS.south + 0.001) {
+        if (GAME_BOUNDS.north <= GAME_BOUNDS.south + 0.0001) {
           GAME_BOUNDS[direction] -= amount;
           return;
         }
-        if (GAME_BOUNDS.east <= GAME_BOUNDS.west + 0.001) {
+        if (GAME_BOUNDS.east <= GAME_BOUNDS.west + 0.0001) {
           GAME_BOUNDS[direction] -= amount;
           return;
         }
@@ -1047,13 +1044,16 @@
           const seedInput = document.getElementById("seedInput").value.trim();
           SEED = seedInput || Math.random().toString(36).substring(2, 10);
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
+          //GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
           const bar = await geocodeLocation(startLocName);
           const startLocCoords = bar.location;
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
+          GAME_BOUNDS = calculateBoundsFromCenter(
+            centerLocation,
+            gameState.selectedSize
+          );
 
           initialSetupScreen.classList.add("hidden");
           boundarySetupScreen.classList.remove("hidden");
@@ -1072,10 +1072,13 @@
         initialSetupScreen.classList.remove("hidden");
       });
 
+      // Map Size Adjustment Buttons
       document.querySelectorAll(".adjust-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const direction = btn.dataset.direction;
-          const amount = parseFloat(btn.dataset.amount);
+          const sign = btn.textContent.trim() === "+" ? 1 : -1;
+          const step = STEP_SIZES[gameState.selectedSize]; // use the correct step for map size
+          const amount = sign * step;
           adjustBoundary(direction, amount);
         });
       });
@@ -1098,6 +1101,7 @@
           });
       });
 
+      // Start Game Button
       startGameBtn.addEventListener("click", async () => {
         const boundaryError = document.getElementById("boundaryError");
         boundaryError.textContent = "";
@@ -1112,6 +1116,7 @@
             throw new Error("Invalid boundaries.");
           }
 
+          // TODO
           boundarySetupScreen.classList.add("hidden");
           gameScreen.classList.remove("hidden");
 
@@ -1234,10 +1239,24 @@
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
+          GAME_BOUNDS = calculateBoundsFromCenter(
+            centerLocation,
+            gameState.selectedSize
+          );
 
-          initialSetupScreen.classList.add("hidden");
-          boundarySetupScreen.classList.remove("hidden");
+          // Skip for Region mode
+          if (gameState.selectedMode === "custom") {
+            initialSetupScreen.classList.add("hidden");
+            boundarySetupScreen.classList.remove("hidden");
+          } else {
+            boundarySetupScreen.classList.add("hidden");
+            gameScreen.classList.remove("hidden");
+            setTimeout(initGame, 10);
+            setTimeout(() => {
+              startGameBtn.disabled = false;
+              startGameBtn.textContent = "Start Game";
+            }, 1000);
+          }
 
           setTimeout(initBoundaryMap, 10);
         } catch (error) {
