@@ -185,6 +185,37 @@ body {
     transform: rotate(45deg);
 }
 
+/* Dropdown */
+
+.dropdown-select {
+    width: 100%;
+    padding: 10px 12px;
+    min-height: 44px;
+    font-size: 1rem;
+    color: #444;
+    background-color: #fff;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s ease;
+    margin-bottom: 8px;
+    font-family: inherit;
+}
+
+.dropdown-select:hover {
+    border-color: #bbb;
+}
+
+.dropdown-select:focus {
+    border-color: #666;
+}
+
+.dropdown-select option {
+    padding: 10px;
+    color: #444;
+}
+
 /* Input Styles */
 .setup-input {
     width: 100%;
@@ -648,14 +679,6 @@ body {
     transform: rotate(180deg);
 }
 
-.message {
-    margin-top: 10px;
-    padding: 10px 16px;
-    border-radius: 6px;
-    font-size: 14px;
-    animation: slideIn 0.3s ease-out;
-}
-
 @keyframes slideIn {
     from {
         opacity: 0;
@@ -666,6 +689,14 @@ body {
         opacity: 1;
         transform: translateY(0);
     }
+}
+
+.message {
+    margin-top: 10px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    animation: slideIn 0.3s ease-out;
 }
 
 .message.success {
@@ -696,6 +727,81 @@ body {
     color: white;
     font-weight: 600;
 }
+
+/* --- Seed Info Popup --- */
+
+#seedPopup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.55);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    z-index: 9999;
+}
+
+.popupHidden {
+    display: none !important;
+}
+
+.popupContent {
+    background: white;
+    color: black;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 420px;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+    position: relative;
+}
+
+.popupCloseBtn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: none;
+    background: rgba(0, 0, 0, 0.2);
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.popupCloseBtn:hover {
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.popupSection {
+    margin: 16px 0;
+}
+
+.popupLine {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    word-break: break-word;
+}
+
+.copyBtn {
+    border: none;
+    background: #4CAF50;
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.copyBtn:hover {
+    background: #45A049;
+}
+
+/* --- Leaflet Map Styles --- */
 
 #map {
     flex: 1;
@@ -738,17 +844,17 @@ body {
 
 #seedInfoBtn {
     position: absolute;
-    top: 20px;
-    right: 70px;
+    top: 5px;
+    right: 55px;
     background: none;
     border: none;
     cursor: pointer;
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 2px solid white;
+    border: 0px solid white;
     color: white;
-    font-size: 20px;
+    font-size: 22px;
     font-weight: bold;
     transition: all 0.2s;
 }
