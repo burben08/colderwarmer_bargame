@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bar Hunt</title>
-    <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
     />
     <link rel="stylesheet" href="styles.css" />
+    <link rel="icon" type="image/x-icon" href="favicon.ico" />
   </head>
   <body>
     <div id="initialSetupScreen">
@@ -104,23 +104,47 @@
 
           <div class="section-content">
             <div class="section-inner">
-              <h3 class="sub-title">Seed</h3>
+              <h3 class="sub-title">👭 Play on multiple Phones</h3>
               <input
                 type="text"
-                id="seedInput"
+                id="gameCodeInput"
                 class="setup-input"
-                placeholder="Custom game seed (optional)"
+                placeholder="Paste game code to copy game (optional)"
               />
-              <div class="seed-helper">Leave empty for a random seed</div>
+              <div class="seed-helper">
+                By clicking on the '👭' icon in the game another user can send
+                you the game code, so you can play the exact same game.
+              </div>
             </div>
 
             <div class="section-inner">
-              <h3 class="sub-title">Hidden Locations</h3>
+              <h3 class="sub-title">
+                🍴 Also include Restaurants
+              </h3>
               <label class="checkbox-container">
-                Restaurants
+                Yes
                 <input type="checkbox" id="restaurantCheckbox" />
                 <span class="checkmark"></span>
               </label>
+            </div>
+
+            <div class="section-inner">
+              <h3 class="sub-title">⏳ Open for at least</h3>
+              <select class="dropdown-select" id="minimumOpenFor">
+                <option value="none">-</option>
+                <option value="now">Now</option>
+                <option value="1">1h</option>
+                <option value="2">2h</option>
+                <option value="3">3h</option>
+                <option value="4">4h</option>
+                <option value="5">5h</option>
+                <option value="6">6h</option>
+              </select>
+              <div class="seed-helper">
+                This reduces the considered bars drastically, since many dont
+                have opening hours listed. Also the listed hours may be
+                inaccurate.
+              </div>
             </div>
           </div>
         </div>
@@ -192,7 +216,7 @@
             ></path>
           </svg>
         </button>
-        <button id="seedInfoBtn" title="Show Seed">?</button>
+        <button id="seedInfoBtn" title="Show Seed">👭</button>
         <h1>🍺 Find the Secret Bar</h1>
         <div class="game-info">
           <!--<span>🎯 Target: <strong id="targetBar">???</strong></span>-->
@@ -221,6 +245,26 @@
         <div id="message"></div>
       </div>
       <div id="map"></div>
+    </div>
+
+    <div id="seedPopup" class="popupHidden">
+      <div class="popupContent">
+        <button id="popupClose" class="popupCloseBtn">✖</button>
+
+        <h2>Copy Game Settings</h2>
+
+        <div class="seed-helper">
+          Share this code with a friend to let them play the same game:
+        </div>
+
+        <div class="popupSection">
+          <div class="popupHeader">
+            <strong>Game Code</strong>
+            <button class="copyBtn" data-copy-target="popupCode">Copy</button>
+          </div>
+          <div id="popupCode" class="popupValue"></div>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -276,9 +320,9 @@
       const SIZE_PRESETS = {
         S: 1, //km
         M: 2,
-        L: 3,
-        XL: 3.5,
-        XXL: 4,
+        L: 4,
+        XL: 10,
+        XXL: 50,
         XXXL: 500,
       };
 
@@ -288,7 +332,7 @@
 
       // --- GAME STATE & VARS ---
       let centerLocation = { lat: 47.3769, lng: 8.5417 };
-      let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
+      //let GAME_BOUNDS = { south: 47.365, north: 47.39, west: 8.52, east: 8.56 };
 
       let gameState = {
         targetBar: null,
@@ -300,6 +344,9 @@
         selectedSize: "M",
         selectedMode: "custom",
         restaurantsConsidered: false,
+        minimumOpenFor: null,
+        GAME_BOUNDS: { south: 47.365, north: 47.39, west: 8.52, east: 8.56 },
+        SEED: null,
       };
 
       let allBarsInArea = []; // FIX 1: To store bars and prevent re-fetching
@@ -314,7 +361,7 @@
       let remainingBarsEveryTurn = []; // INSIDE
       let previewLine = null;
       let previewMarker = null;
-      let SEED = null;
+      //let SEED = null;
 
       // --- ICONS ---
       const visitedIcon = (number, isWarmer) =>
@@ -373,8 +420,10 @@
           },${bounds.east},${bounds.north}&limit=1`;
         } else {
           // fallback global search
-          const centerLat = (GAME_BOUNDS.north + GAME_BOUNDS.south) / 2;
-          const centerLng = (GAME_BOUNDS.east + GAME_BOUNDS.west) / 2;
+          const centerLat =
+            (gameState.GAME_BOUNDS.north + gameState.GAME_BOUNDS.south) / 2;
+          const centerLng =
+            (gameState.GAME_BOUNDS.east + gameState.GAME_BOUNDS.west) / 2;
           url = `https://photon.komoot.io/api/?q=${encodeURIComponent(
             query
           )}&lat=${centerLat}&lon=${centerLng}&limit=1`;
@@ -399,7 +448,7 @@
         const locationTypes = ["bar", "pub"];
         if (gameState.restaurantsConsidered) locationTypes.push("restaurant");
 
-        const bounds = `${GAME_BOUNDS.south},${GAME_BOUNDS.west},${GAME_BOUNDS.north},${GAME_BOUNDS.east}`;
+        const bounds = `${gameState.GAME_BOUNDS.south},${gameState.GAME_BOUNDS.west},${gameState.GAME_BOUNDS.north},${gameState.GAME_BOUNDS.east}`;
 
         const query = `
         [out:json][timeout:100];
@@ -417,8 +466,13 @@
         });
 
         if (!response.ok)
-          throw new Error("Failed to fetch bars from OpenStreetMap");
+          throw new Error(
+            "Failed to fetch bars from OpenStreetMap. Try again."
+          );
         const data = await response.json();
+
+        // DATE FILTER:
+        const now = new Date();
 
         const bars = data.elements
           .filter((el) => el.tags && el.tags.name)
@@ -428,7 +482,18 @@
             lat: el.lat,
             lng: el.lon,
             inside: true,
-          }));
+            openingHours: el.tags.opening_hours || null,
+          }))
+          // CHANGED: Only filter if minimumOpenFor is not null/undefined
+          .filter((bar) => {
+            if (gameState.minimumOpenFor == null) return true; // No filtering if null/undefined
+            return isBarOpenAtTime(
+              bar.openingHours,
+              now,
+              gameState.minimumOpenFor,
+              bar.name
+            );
+          });
 
         if (bars.length < 2) {
           throw new Error(
@@ -437,6 +502,122 @@
         }
 
         return bars;
+      }
+
+      // CHANGED: Added mode parameter to handle 'today' vs number filtering
+      function isBarOpenAtTime(
+        openingHours,
+        checkTime, // This is 'now' passed from fetchBarsInBounds
+        minimumOpenFor,
+        barName
+      ) {
+        if (!openingHours) {
+          console.log(`Bar "${barName}" has no opening hours.`);
+          return false;
+        }
+
+        try {
+          // --- 1. Parse today's hours (same logic as your code) ---
+          const dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+          // Use checkTime, not a new Date(), to be consistent
+          const todayName = dayNames[checkTime.getDay()];
+          const normalized = openingHours.toLowerCase().replace(/\s+/g, " ");
+          let todayHours = null;
+
+          const dayRangeMatch = normalized.match(
+            /([a-z,\-]+)\s+(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/
+          );
+          if (dayRangeMatch) {
+            const days = dayRangeMatch[1];
+            const openTimeStr = dayRangeMatch[2];
+            const closeTimeStr = dayRangeMatch[3];
+            if (
+              days.includes(todayName.toLowerCase()) ||
+              days === "mo-su" ||
+              days === "daily"
+            ) {
+              todayHours = { open: openTimeStr, close: closeTimeStr };
+            }
+          } else {
+            const simpleMatch = normalized.match(
+              /(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/
+            );
+            if (simpleMatch) {
+              todayHours = { open: simpleMatch[1], close: simpleMatch[2] };
+            }
+          }
+
+          if (!todayHours) {
+            // console.log(`Bar "${barName}" has no parseable hours for today. Keeping.`);
+            return true; // Can't parse for today = don't filter out
+          }
+
+          // --- 2. Calculate Date objects for open/close times ---
+          const parseTime = (timeStr) => {
+            const [h, m] = timeStr.split(":").map(Number);
+            const d = new Date(checkTime); // Start with the correct date
+            d.setHours(h, m, 0, 0);
+            return d;
+          };
+
+          const openTime = parseTime(todayHours.open);
+          const closeTime = parseTime(todayHours.close);
+
+          // Handle closing after midnight (e.g., 22:00-02:00)
+          if (closeTime < openTime) {
+            closeTime.setDate(closeTime.getDate() + 1);
+          }
+
+          // --- 3. Check if the bar is open RIGHT NOW ---
+          // Note: This logic doesn't handle cases where the bar opened *yesterday* // and is still open (e.g., it's 1 AM, hours are Mo 22:00-02:00).
+          // Your simple parser doesn't support that, so we'll stick to this:
+          const isOpenNow = checkTime >= openTime && checkTime <= closeTime;
+
+          // --- 4. Apply filter logic based on 'minimumOpenFor' ---
+
+          // Case: 'now'
+          if (minimumOpenFor === "now") {
+            if (!isOpenNow) {
+              console.log(`Bar "${barName}" is filtered out (not open now).`);
+            }
+            return isOpenNow; // Keep if open, filter if closed
+          }
+
+          // Case: integer
+          if (typeof minimumOpenFor === "number") {
+            // Must be open *now* to even be considered
+            if (!isOpenNow) {
+              console.log(
+                `Bar "${barName}" is filtered out (not open now for duration check).`
+              );
+              return false;
+            }
+
+            // If it is open, check if it stays open long enough
+            const requiredOpenUntil = new Date(
+              checkTime.getTime() + minimumOpenFor * 60 * 60 * 1000
+            );
+
+            if (requiredOpenUntil > closeTime) {
+              console.log(
+                `Bar "${barName}" is filtered out (closes at ${closeTime}, required until ${requiredOpenUntil}).`
+              );
+              return false; // Won't be open long enough
+            }
+
+            // Passes both checks!
+            return true;
+          }
+
+          // Failsafe, though 'none' (null) is handled in the .filter()
+          return true;
+        } catch (e) {
+          console.warn(
+            `Error parsing opening hours for "${barName}": ${openingHours}`,
+            e
+          );
+          return true; // Error parsing = don't filter out
+        }
       }
 
       function showMessage(text, type) {
@@ -449,6 +630,17 @@
             msgDiv.className = "";
           }, 3000);
         }
+      }
+
+      function openSeedPopup(code) {
+        document.getElementById("popupCode").textContent = code;
+
+        const popup = document.getElementById("seedPopup");
+        popup.classList.remove("popupHidden");
+      }
+
+      function closeSeedPopup() {
+        document.getElementById("seedPopup").classList.add("popupHidden");
       }
 
       function updatePath() {
@@ -490,8 +682,8 @@
         clearPreview();
 
         // Set Seed
-        if (!SEED) {
-          SEED = Math.random().toString(36).substring(2, 10);
+        if (!gameState.SEED) {
+          gameState.SEED = Math.random().toString(36).substring(2, 10);
         }
 
         // FIX 1: Fetch bars once and store them
@@ -499,8 +691,8 @@
         try {
           if (gameState.selectedMode === "region") {
             allBarsInArea = await drawRandomBarFromDensityGrid(
-              GAME_BOUNDS,
-              SEED
+              gameState.GAME_BOUNDS,
+              gameState.SEED
             );
           } else {
             allBarsInArea = await fetchBarsInBounds();
@@ -513,7 +705,7 @@
         const bars = allBarsInArea; // Use the global list for setup
 
         // INSIDE: Display all bars on map (for testing)
-        if (SEED == "Hacker") {
+        if (gameState.SEED == "Hacker") {
           bars.forEach((bar) => {
             const icon = L.divIcon({
               html: '<div style="background:red;width:12px;height:12px;border-radius:50%;border:2px solid white;"></div>',
@@ -534,17 +726,17 @@
           });
         }
 
-        const rng = new Math.seedrandom(SEED);
+        const rng = new Math.seedrandom(gameState.SEED);
         const targetBar = bars[Math.floor(rng() * bars.length)];
 
         console.log("Target Bar: ", targetBar.name, targetBar.city);
         console.log("Target city: ", targetBar.city);
-        console.log("Seed: ", SEED);
+        console.log("Seed: ", gameState.SEED);
 
         gameArea = L.rectangle(
           [
-            [GAME_BOUNDS.south, GAME_BOUNDS.west],
-            [GAME_BOUNDS.north, GAME_BOUNDS.east],
+            [gameState.GAME_BOUNDS.south, gameState.GAME_BOUNDS.west],
+            [gameState.GAME_BOUNDS.north, gameState.GAME_BOUNDS.east],
           ],
           { color: "#eb5e4b", weight: 2, fillOpacity: 0.05, dashArray: "5, 5" }
         ).addTo(map);
@@ -552,9 +744,6 @@
 
         gameState.targetBar = targetBar.name;
         gameState.targetLocation = { lat: targetBar.lat, lng: targetBar.lng };
-        gameState.visitedBars = [];
-        gameState.visitCount = 0;
-        gameState.gameWon = false;
 
         const startMarker = L.marker(
           [gameState.startingPoint.lat, gameState.startingPoint.lng],
@@ -596,7 +785,7 @@
       async function confirmBar() {
         if (gameState.gameWon || !previewedLocation) return;
 
-        const userEnteredName = barInput.value.trim();
+        //const userEnteredName = barInput.value.trim();
         //const foundBarName = await findClosestBarName(previewedLocation);
         const foundBarName = previewedLocation.name;
         const location = previewedLocation.location;
@@ -618,7 +807,7 @@
 
         gameState.visitCount++;
         //gameState.visitedBars.push({ name: foundBarName, ...location });
-        gameState.visitedBars.push({ name: userEnteredName, ...location });
+        gameState.visitedBars.push({ name: foundBarName, ...location });
 
         const isWin =
           foundBarName.toLowerCase() === gameState.targetBar.toLowerCase();
@@ -626,26 +815,33 @@
           ? winIcon
           : visitedIcon(gameState.visitCount, isWarmer);
 
-        const marker = L.marker([location.lat, location.lng], { icon })
-          .addTo(map)
-          .bindPopup(
-            `<div class="bar-popup"><h3>${
-              isWin ? "🎉 " : isWarmer ? "🔥 " : "❄️ "
-            }${userEnteredName}</h3><p><span class="visit-number">${
-              gameState.visitCount
-            }</span> Visit #${gameState.visitCount}</p>${
-              !isWin
-                ? `<p style="font-weight: 600; color: ${
-                    isWarmer ? "#FF6347" : "#4169E1"
-                  }">${isWarmer ? "🔥 Warmer!" : "❄️ Colder!"}</p>`
-                : ""
-            }${
-              isWin
-                ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>'
-                : ""
-            }</div>`
-          )
-          .openPopup();
+        const marker = L.marker([location.lat, location.lng], { icon });
+
+        try {
+          marker.addTo(map);
+        } catch (err) {
+          console.error('Failed to add marker:', err);
+        }
+
+        marker.bindPopup(
+          `<div class="bar-popup"><h3>${
+            isWin ? "🎉 " : isWarmer ? "🔥 " : "❄️ "
+          }${foundBarName}</h3><p><span class="visit-number">${
+            gameState.visitCount
+          }</span> Visit #${gameState.visitCount}</p>${
+            !isWin
+              ? `<p style="font-weight: 600; color: ${
+                  isWarmer ? "#FF6347" : "#4169E1"
+                }">${isWarmer ? "🔥 Warmer!" : "❄️ Colder!"}</p>`
+              : ""
+          }${
+            isWin
+              ? '<p style="color: #4CAF50; font-weight: 600;">YOU FOUND IT!</p>'
+              : ""
+          }</div>`
+        );
+
+        marker.openPopup();
         markers.push(marker);
 
         // Build elimination zone
@@ -656,7 +852,7 @@
         let eliminationZone;
 
         eliminationZone = window.buildPolygon(
-          GAME_BOUNDS,
+          gameState.GAME_BOUNDS,
           [pt1LonLat, pt2LonLat],
           isWarmer
         );
@@ -671,7 +867,7 @@
         eliminationZones.push(zone);
 
         // INSIDE: Update bars inside elimination zones
-        if (SEED == "Hacker") {
+        if (gameState.SEED == "Hacker") {
           allBarsInArea.forEach((bar) => {
             if (bar.inside) {
               const point = { lat: bar.lat, lng: bar.lng };
@@ -683,7 +879,7 @@
         }
 
         updatePath();
-        map.flyTo([location.lat, location.lng], Math.max(map.getZoom(), 14), {
+        map.flyTo([location.lat, location.lng], map.getZoom(), {
           duration: 1,
         });
         document.getElementById("visitCount").textContent =
@@ -772,12 +968,11 @@
           if (!bar) {
             bar = await geocodeLocation(query, null);
           }
-          //const location = await geocodeLocation(query);
           if (
-            location.lat < GAME_BOUNDS.south ||
-            location.lat > GAME_BOUNDS.north ||
-            location.lng < GAME_BOUNDS.west ||
-            location.lng > GAME_BOUNDS.east
+            bar.location.lat < gameState.GAME_BOUNDS.south ||
+            bar.location.lat > gameState.GAME_BOUNDS.north ||
+            bar.location.lng < gameState.GAME_BOUNDS.west ||
+            bar.location.lng > gameState.GAME_BOUNDS.east
           ) {
             showMessage(`'${query}' is outside the game area.`, "error");
             return;
@@ -803,7 +998,7 @@
           const boundaryIntersections = window.getIntersections(
             p1_lonlat,
             p2_lonlat,
-            GAME_BOUNDS
+            gameState.GAME_BOUNDS
           );
           const linePoints = window.getLineCoordsBetween(
             boundaryIntersections[0],
@@ -865,6 +1060,10 @@
         gameScreen.classList.add("hidden");
         initialSetupScreen.classList.remove("hidden");
 
+        gameState.visitedBars = [];
+        gameState.visitCount = 0;
+        gameState.gameWon = false;
+
         if (map) {
           map.remove();
           map = null;
@@ -891,8 +1090,8 @@
         barInput.disabled = false;
 
         // Reset seed
-        SEED = null;
-        document.getElementById("seedInput").value = "";
+        gameState.SEED = null;
+        //document.getElementById("seedInput").value = "";
       }
 
       // --- BOUNDARY SETUP LOGIC ---
@@ -914,8 +1113,8 @@
 
       function updateBoundaryRectangle() {
         const bounds = [
-          [GAME_BOUNDS.south, GAME_BOUNDS.west],
-          [GAME_BOUNDS.north, GAME_BOUNDS.east],
+          [gameState.GAME_BOUNDS.south, gameState.GAME_BOUNDS.west],
+          [gameState.GAME_BOUNDS.north, gameState.GAME_BOUNDS.east],
         ];
 
         if (boundaryRectangle) {
@@ -932,24 +1131,27 @@
 
       function updateBoundaryValues() {
         document.getElementById("northValue").textContent =
-          GAME_BOUNDS.north.toFixed(4);
+          gameState.GAME_BOUNDS.north.toFixed(4);
         document.getElementById("southValue").textContent =
-          GAME_BOUNDS.south.toFixed(4);
+          gameState.GAME_BOUNDS.south.toFixed(4);
         document.getElementById("eastValue").textContent =
-          GAME_BOUNDS.east.toFixed(4);
+          gameState.GAME_BOUNDS.east.toFixed(4);
         document.getElementById("westValue").textContent =
-          GAME_BOUNDS.west.toFixed(4);
+          gameState.GAME_BOUNDS.west.toFixed(4);
       }
 
       function adjustBoundary(direction, amount) {
-        GAME_BOUNDS[direction] += amount;
+        gameState.GAME_BOUNDS[direction] += amount;
 
-        if (GAME_BOUNDS.north <= GAME_BOUNDS.south + 0.0001) {
-          GAME_BOUNDS[direction] -= amount;
+        if (
+          gameState.GAME_BOUNDS.north <=
+          gameState.GAME_BOUNDS.south + 0.0001
+        ) {
+          gameState.GAME_BOUNDS[direction] -= amount;
           return;
         }
-        if (GAME_BOUNDS.east <= GAME_BOUNDS.west + 0.0001) {
-          GAME_BOUNDS[direction] -= amount;
+        if (gameState.GAME_BOUNDS.east <= gameState.GAME_BOUNDS.west + 0.0001) {
+          gameState.GAME_BOUNDS[direction] -= amount;
           return;
         }
 
@@ -958,7 +1160,7 @@
 
       function calculateBoundsFromCenter(center, size) {
         if (gameState.selectedMode == "region") {
-          return GAME_BOUNDS_Regions[size];
+          return gameState.GAME_BOUNDS_Regions[size];
         } else {
           offset = SIZE_PRESETS[size] / 2;
           delta_lat = (offset / 6371) * (180 / Math.PI);
@@ -972,6 +1174,19 @@
             west: center.lng - delta_lon,
           };
         }
+      }
+
+      // ENOCDER:
+      function encodeState(state) {
+        const json = JSON.stringify(state);
+        const encoded = btoa(json);
+        return encoded;
+      }
+
+      function decodeState(encodedString) {
+        const json = atob(encodedString);
+        const state = JSON.parse(json);
+        return state;
       }
 
       // --- EVENT LISTENERS ---
@@ -1042,8 +1257,10 @@
           if (!startLocName)
             throw new Error("Please enter a starting location.");
           // Get seed from input or generate random one
-          const seedInput = document.getElementById("seedInput").value.trim();
-          SEED = seedInput || Math.random().toString(36).substring(2, 10);
+          //const seedInput = document.getElementById("seedInput").value.trim();
+          const seedInput = null;
+          gameState.SEED =
+            seedInput || Math.random().toString(36).substring(2, 10);
 
           //GAME_BOUNDS = calculateBoundsFromCenter(centerLocation, gameState.selectedSize);
           const bar = await geocodeLocation(startLocName);
@@ -1051,7 +1268,7 @@
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(
+          gameState.GAME_BOUNDS = calculateBoundsFromCenter(
             centerLocation,
             gameState.selectedSize
           );
@@ -1087,19 +1304,10 @@
       const seedInfoBtn = document.getElementById("seedInfoBtn");
 
       seedInfoBtn.addEventListener("click", () => {
-        const msgDiv = document.getElementById("message");
-        msgDiv.innerHTML = `<strong>🎲 Game Seed:</strong> ${SEED}<br><small>Share this seed with friends to play the same game!</small>`;
-        msgDiv.className = "message success";
+        const encodedState = encodeState(gameState);
+        console.log("Encoded Game State:", encodedState);
 
-        // Copy to clipboard
-        navigator.clipboard
-          .writeText(SEED)
-          .then(() => {
-            msgDiv.innerHTML = `<strong>🎲 Game Seed:</strong> ${SEED} <span style="color: #4CAF50;">✓ Copied!</span><br><small>Share this seed with friends to play the same game!</small>`;
-          })
-          .catch(() => {
-            // Clipboard failed, just show the seed
-          });
+        openSeedPopup(encodedState);
       });
 
       // Start Game Button
@@ -1111,8 +1319,8 @@
 
         try {
           if (
-            GAME_BOUNDS.north <= GAME_BOUNDS.south ||
-            GAME_BOUNDS.east <= GAME_BOUNDS.west
+            gameState.GAME_BOUNDS.north <= gameState.GAME_BOUNDS.south ||
+            gameState.GAME_BOUNDS.east <= gameState.GAME_BOUNDS.west
           ) {
             throw new Error("Invalid boundaries.");
           }
@@ -1218,7 +1426,7 @@
         });
       });
 
-      // Your existing continueBtn code stays the same
+      // Continue Button
       continueBtn.addEventListener("click", async () => {
         const initialSetupError = document.getElementById("initialSetupError");
         initialSetupError.textContent = "";
@@ -1232,31 +1440,79 @@
           if (!startLocName)
             throw new Error("Please enter a starting location.");
           // Get seed from input or generate random one
-          const seedInput = document.getElementById("seedInput").value.trim();
-          SEED = seedInput || Math.random().toString(36).substring(2, 10);
+          //const seedInput = document.getElementById("seedInput").value.trim();
+          const seedInput = null;
+          gameState.SEED =
+            seedInput || Math.random().toString(36).substring(2, 10);
 
           const bar = await geocodeLocation(startLocName);
           const startLocCoords = bar.location;
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
-          GAME_BOUNDS = calculateBoundsFromCenter(
+          gameState.GAME_BOUNDS = calculateBoundsFromCenter(
             centerLocation,
             gameState.selectedSize
           );
 
           // Skip for Region mode
-          if (gameState.selectedMode === "custom") {
-            initialSetupScreen.classList.add("hidden");
-            boundarySetupScreen.classList.remove("hidden");
+          const gameCode = document
+            .getElementById("gameCodeInput")
+            .value.trim();
+          console.log("GAMECODE: ", gameCode);
+
+          if (gameCode != "") {
+            // if a game code is provided, decode it
+            try {
+              const decodedState = decodeState(gameCode);
+              console.log("Decoded State:", decodedState);
+              // Overwrite gameState with decoded values
+              gameState = { ...gameState, ...decodedState };
+
+              // Update UI based on decoded state
+              document.getElementById("startLocationInput").value =
+                gameState.startingPoint.name;
+
+              boundarySetupScreen.classList.add("hidden");
+              gameScreen.classList.remove("hidden");
+              await initGame();
+              setTimeout(() => {
+                startGameBtn.disabled = false;
+                startGameBtn.textContent = "Start Game";
+              }, 1000);
+
+              let visitedBars = gameState.visitedBars;
+              let VisitCount = gameState.visitCount;
+              gameState.visitedBars = [];
+              gameState.visitCount = 0;
+              for (const bar of visitedBars) {
+                previewedLocation = {
+                  name: bar.name,
+                  location: {
+                    lat: bar.lat,
+                    lng: bar.lng,
+                  },
+                };
+                await confirmBar();
+              }
+
+            } catch (e) {
+              throw new Error("Invalid game code.");
+            }
           } else {
-            boundarySetupScreen.classList.add("hidden");
-            gameScreen.classList.remove("hidden");
-            setTimeout(initGame, 10);
-            setTimeout(() => {
-              startGameBtn.disabled = false;
-              startGameBtn.textContent = "Start Game";
-            }, 1000);
+            // otherwise, proceed as normal
+            if (gameState.selectedMode === "custom") {
+              initialSetupScreen.classList.add("hidden");
+              boundarySetupScreen.classList.remove("hidden");
+            } else {
+              boundarySetupScreen.classList.add("hidden");
+              gameScreen.classList.remove("hidden");
+              setTimeout(initGame, 10);
+              setTimeout(() => {
+                startGameBtn.disabled = false;
+                startGameBtn.textContent = "Start Game";
+              }, 1000);
+            }
           }
 
           setTimeout(initBoundaryMap, 10);
@@ -1268,9 +1524,43 @@
         }
       });
 
-      // Rest of your existing code continues...
+      // Add event listener for the dropdown
+      document
+        .getElementById("minimumOpenFor")
+        .addEventListener("change", function (e) {
+          const value = e.target.value;
+
+          if (value === "none") {
+            gameState.minimumOpenFor = null;
+          } else if (value === "now") {
+            gameState.minimumOpenFor = "now";
+          } else {
+            gameState.minimumOpenFor = parseInt(value, 10); // Convert to number (1, 2, 3, etc.)
+          }
+
+          console.log("minimumOpenFor set to:", gameState.minimumOpenFor);
+        });
+
+      // Pop Up
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .getElementById("popupClose")
+          .addEventListener("click", closeSeedPopup);
+
+        // Attach copy button listeners
+        document.querySelectorAll(".copyBtn").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const id = btn.getAttribute("data-copy-target");
+            const txt = document.getElementById(id).textContent;
+
+            navigator.clipboard.writeText(txt).then(() => {
+              const original = btn.textContent;
+              btn.textContent = "Copied!";
+              setTimeout(() => (btn.textContent = original), 1300);
+            });
+          });
+        });
+      });
     </script>
   </body>
 </html>
-
-
