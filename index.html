@@ -217,7 +217,7 @@
           </svg>
         </button>
         <button id="seedInfoBtn" title="Show Seed">👭</button>
-        <h1>🍺 Find the Secret Bar</h1>
+        <h1>🍺 Find the secret Bar</h1>
         <div class="game-info">
           <!--<span>🎯 Target: <strong id="targetBar">???</strong></span>-->
           <span>🗺️ Map Size: <strong id="mapSize">M</strong></span>
@@ -266,6 +266,12 @@
         </div>
       </div>
     </div>
+
+    <div id="loadingScreen">
+      <div class="loader"></div>
+      <div class="loadingText">Finding secret bar. If it fails, try again.</div>
+    </div>
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/seedrandom@3.0.5/seedrandom.min.js"></script>
@@ -688,6 +694,7 @@
 
         // FIX 1: Fetch bars once and store them
         showMessage("Searching for bars in the area...", "success");
+        showLoading();
         try {
           if (gameState.selectedMode === "region") {
             allBarsInArea = await drawRandomBarFromDensityGrid(
@@ -700,8 +707,11 @@
         } catch (error) {
           showMessage(error.message, "error");
           setTimeout(resetGame, 2000);
+          hideLoading();
           return;
         }
+        hideLoading();
+
         const bars = allBarsInArea; // Use the global list for setup
 
         // INSIDE: Display all bars on map (for testing)
@@ -1160,7 +1170,7 @@
 
       function calculateBoundsFromCenter(center, size) {
         if (gameState.selectedMode == "region") {
-          return gameState.GAME_BOUNDS_Regions[size];
+          return GAME_BOUNDS_Regions[size];
         } else {
           offset = SIZE_PRESETS[size] / 2;
           delta_lat = (offset / 6371) * (180 / Math.PI);
@@ -1187,6 +1197,15 @@
         const json = atob(encodedString);
         const state = JSON.parse(json);
         return state;
+      }
+
+      // Loading Screen
+      function showLoading() {
+        document.getElementById("loadingScreen").style.display = "flex";
+      }
+
+      function hideLoading() {
+        document.getElementById("loadingScreen").style.display = "none";
       }
 
       // --- EVENT LISTENERS ---
@@ -1437,9 +1456,11 @@
           const startLocName = document
             .getElementById("startLocationInput")
             .value.trim();
+
           if (!startLocName)
             throw new Error("Please enter a starting location.");
-          // Get seed from input or generate random one
+          
+            // Get seed from input or generate random one
           //const seedInput = document.getElementById("seedInput").value.trim();
           const seedInput = null;
           gameState.SEED =
@@ -1447,6 +1468,7 @@
 
           const bar = await geocodeLocation(startLocName);
           const startLocCoords = bar.location;
+
           gameState.startingPoint = { name: startLocName, ...startLocCoords };
           centerLocation = startLocCoords;
 
@@ -1505,6 +1527,7 @@
               initialSetupScreen.classList.add("hidden");
               boundarySetupScreen.classList.remove("hidden");
             } else {
+              console.log('region')
               boundarySetupScreen.classList.add("hidden");
               gameScreen.classList.remove("hidden");
               setTimeout(initGame, 10);
